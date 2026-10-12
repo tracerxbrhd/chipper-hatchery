@@ -1,5 +1,16 @@
 # AGENTS.md
 
+## Chipper 0.1 project rules
+
+- Canonical product rules: DOCS/GDD_0.1.md, verification DOCS/ACCEPTANCE_0.1.md, implementation contract DOCS/CONTRACT_0.1.md. Never rewrite baseline documents to fit code.
+- UI/report language is Russian. One active bird; no death, punishment, payments, advertising, NFT, trade or referral systems.
+- Runtime domain: tgcloud/lib/domain.js; BALANCE/APPEARANCES are authoritative. Inject clocks and RNG in tests. No client economy or timers as authority.
+- All player effects and durable receipts must commit in one per-player SQLite revision CAS. Never replace it with read/write queries lacking an atomic guard. Never prune receipts without replay-safe expiry design.
+- Production identity only from verified ctx.initData.user.id. Reject foreign object IDs. Dev mock is compile-time DEV-only and never production auth.
+- npm run check, npm run test:ui; Node24 is required for actual local SQLite tests. Do not count mocked contexts/browser runs as live Telegram acceptance.
+- Work on feature/chipper-v0.1; PR into main, no merge. Deployment is push followed by reviewed safe migration. Verify exact bot first; never read credentials, reset cloud, force push or delete player data.
+- Updated results and deployment status: DOCS/ACCEPTANCE_RESULT_0.1.md. CLI SDK details below and DOCS/tgcloud-sdk.md.
+
 Orientation for AI coding assistants (and humans) working in this project.
 This file is auto-loaded by Claude Code, Cursor, and similar tools — keep it short
 and true. For the full SDK reference (db, Bot API, fetch), see

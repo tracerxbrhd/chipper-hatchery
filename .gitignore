@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.tgcloud/
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+coverage/
+*.tsbuildinfo
+*.log
+.DS_Store

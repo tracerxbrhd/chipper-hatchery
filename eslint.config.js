@@ -6,6 +6,6 @@ export default tseslint.config(
   { ignores: ['node_modules/**', 'dist/**', '.tgcloud/**', 'playwright-report/**', 'test-results/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  { languageOptions: { globals: { ...globals.browser, ...globals.node } }, rules: { '@typescript-eslint/no-explicit-any': 'error' } },
+  { languageOptions: { globals: { ...globals.browser, ...globals.node } }, rules: { '@typescript-eslint/no-explicit-any': 'error', '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }] } },
   { files: ['tgcloud/**/*.js'], languageOptions: { globals: { console: 'readonly' } }, rules: { 'no-undef': 'error' } },
 );

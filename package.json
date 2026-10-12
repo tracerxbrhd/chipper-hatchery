@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:ui": "playwright test",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-production.mjs && node scripts/check-secrets.mjs",
     "deploy": "npm run check && tgcloud push",
     "migrate": "tgcloud migrate",
     "status": "tgcloud status"

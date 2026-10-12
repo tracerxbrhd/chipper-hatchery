@@ -62,7 +62,9 @@ test('collection rename and switch preserve each individual bird', async ({ page
   await page.getByRole('button', { name: 'Сохранить имя', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Золотко', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Позвать домой', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Золотко', exact: true })).toBeVisible();
+  // The detail card already has this heading. Wait for the home transition,
+  // which happens only after activateChick has persisted and been confirmed.
+  await expect(page.locator('.home-hero').getByRole('heading', { name: 'Золотко', exact: true })).toBeVisible();
   await page.reload(); await expect(page.getByRole('heading', { name: 'Золотко', exact: true })).toBeVisible();
   await page.screenshot({ path: 'DOCS/qa/home.png', fullPage: true });
 });

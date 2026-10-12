@@ -22,6 +22,8 @@
 
 Первые попытки Vitest в Windows sandbox остановились с EPERM realpath **до выполнения assertions**; успешные запуски выполнены в разрешённом обычном окружении. Первый UI-прогон дал8pass/2fail во время изменения исходников/HMR; стабильный повтор дал10/10. Три добавленных synthetic bridge теста сначала получили outside-Telegram экран: официальный SDK перезаписывал тестовый контекст. Исправлен только harness (перехват скрипта для этих тестов); targeted rerun дал3/3. Итог ниже включает весь набор. Неуспешные ранние попытки не скрываются и не считаются PASS.
 
+Первые GitHub Actions запуски прошли `npm run check`, но дали **12/13** в browser suite. [Лог CI](https://github.com/tracerxbrhd/chipper-hatchery/actions/runs/38291620992) выявил ошибку ожидания в тесте коллекции: после нажатия «Позвать домой» имя уже было видно на карточке, поэтому тест мог выполнить reload до ответа `activateChick`. Исправлено только ожидание теста: переход на `.home-hero` подтверждает завершённое серверное сохранение до reload. Повтор исправленного сценария `--repeat-each 10 --workers 2` дал **10/10 PASS**, 43,1с; lint — PASS. Игровой клиент и сервер не изменены. Итоговый статус повторного Linux CI доступен в [проверках PR](https://github.com/tracerxbrhd/chipper-hatchery/pull/1/checks).
+
 ## Сценарии настоящих аккаунтов U01–U16
 
 Для всех U-сценариев статус **PENDING — user acceptance**: реальные аккаунты не доступны агенту. Автоматизированное доказательство в последнем столбце подтверждает локальную реализацию, не живое выполнение в Telegram.
@@ -100,6 +102,6 @@
 
 ## Финальная запись кандидата
 
-Проверенный код: `81d3572c96fad219bbed4807ef181196dc02fe4a`. Итоговые команды: `npm run check` — PASS, `npm run test:ui` —13/13 PASS, `npm run lint` после правки harness — PASS, `node scripts/check-secrets.mjs` после коммитов — PASS. Финальный browser run завершился12.10.2026, около22:30 Europe/Samara. После этого изменяются только документация, screenshots и CI fetch-depth для проверки всей истории; игровые исходники остаются проверенными.
+Проверенный игровой код: `81d3572c96fad219bbed4807ef181196dc02fe4a`. Команды: `npm run check` — PASS, `npm run test:ui` —13/13 PASS, `npm run lint` после правки harness — PASS, `node scripts/check-secrets.mjs` после коммитов — PASS. Полный локальный browser run завершился12.10.2026, около22:30 Europe/Samara. После этого изменены документация, screenshots, CI fetch-depth и ожидание подтверждённой активации в browser test; игровые исходники остаются проверенными.
 
 [PR #1](https://github.com/tracerxbrhd/chipper-hatchery/pull/1), `feature/chipper-v0.1` → `main`, создан12.10.2026 22:32 Europe/Samara. **Открыт, не смержен.** Снимок реализации с отчётом при создании PR: `4a9b9aab2f8fc921c7b6f35c81da8b758073a6fa`. Живого Mini App URL нет; cloud migration не применялась. Скриншоты: [qa/README.md](qa/README.md).

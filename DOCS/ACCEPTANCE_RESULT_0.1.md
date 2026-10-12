@@ -100,6 +100,6 @@
 
 ## Финальная запись кандидата
 
-Проверенный код: `81d3572c96fad219bbed4807ef181196dc02fe4a`. Итоговые команды: `npm run check` — PASS, `npm run test:ui` —13/13 PASS, `npm run lint` после правки harness — PASS, `node scripts/check-secrets.mjs` после коммитов — PASS. Финальный browser run завершился12.10.2026, около22:32 Europe/Samara. После этого изменяются только документация, screenshots и CI fetch-depth для проверки всей истории; игровые исходники остаются проверенными.
+Проверенный код: `81d3572c96fad219bbed4807ef181196dc02fe4a`. Итоговые команды: `npm run check` — PASS, `npm run test:ui` —13/13 PASS, `npm run lint` после правки harness — PASS, `node scripts/check-secrets.mjs` после коммитов — PASS. Финальный browser run завершился12.10.2026, около22:30 Europe/Samara. После этого изменяются только документация, screenshots и CI fetch-depth для проверки всей истории; игровые исходники остаются проверенными.
 
-PR URL будет внесён сразу после создания. Живого Mini App URL нет; cloud migration не применялась. Скриншоты: [qa/README.md](qa/README.md).
+[PR #1](https://github.com/tracerxbrhd/chipper-hatchery/pull/1), `feature/chipper-v0.1` → `main`, создан12.10.2026 22:32 Europe/Samara. **Открыт, не смержен.** Снимок реализации с отчётом при создании PR: `4a9b9aab2f8fc921c7b6f35c81da8b758073a6fa`. Живого Mini App URL нет; cloud migration не применялась. Скриншоты: [qa/README.md](qa/README.md).

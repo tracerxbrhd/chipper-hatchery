@@ -1,8 +1,8 @@
 # Chipper 0.1 — результаты проверки
 
-Дата: **12.10.2026**, Europe/Samara. Ветка: **feature/chipper-v0.1**, база main **7632e35**. Проверенный код кандидата: **81d3572** (клиент **4c5bffd**, сервер **4c7ed7e**, арт **f8c1c26**, scaffold **bbfe5a3**). URL PR фиксируется ниже после создания.
+Дата: **12.10.2026**, Europe/Samara. Ветка: **feature/chipper-v0.1**, база main **7632e35**. Проверенный игровой код: **81d3572** (клиент **4c5bffd**, сервер **4c7ed7e**, арт **f8c1c26**, scaffold **bbfe5a3**). Опубликованный кандидат: **19e9051**. [PR #1](https://github.com/tracerxbrhd/chipper-hatchery/pull/1) открыт, не смержен.
 
-**Готовность:** все предусмотренные GDD подсистемы реализованы и локально интегрированы. **К реальной Telegram-приёмке пока не готова:** CLI сообщает `No CLI access token found for this project`; живого деплоя и применённой облачной схемы нет. Владелец сообщил, что выполнит локальный login; до фактического подтверждения привязки deploy не выполняется. Это объективный внешний blocker, не замаскированная production песочница.
+**Готовность:** все предусмотренные GDD подсистемы реализованы и интегрированы; версия опубликована для приёмки владельцем. [Открыть в Telegram](https://t.me/chipperhatcherybot?startapp), [production URL](https://app8924974998.tgcloud.ai/). Безопасная миграция применена, webhook синхронизирован, Main Mini App включён, Menu Button «Играть» ведёт на точный production URL. Матрица нескольких реальных аккаунтов остаётся **PENDING — user acceptance**; локальные и административные проверки не выдаются за её прохождение.
 
 ## Фактически выполненные проверки
 
@@ -17,8 +17,10 @@
 | npm dependency audit | npm audit / npm install обновлённого Vitest5.0.4 |0 vulnerabilities после обновления |
 | Browser smoke | npm run test:ui | **13 passed,0 failed**, включая2 настоящих25с раунда и3 synthetic production-adapter regressions;1.2мин |
 | tgcloud init | npx tgcloud init --no-git | PASS — automated; CLI0.2.0, SDK reference создан |
-| Live deploy/миграции | tgcloud fetch/status | **BLOCKED** — нет CLI access token; dist и19 runtime .js готовы, но не опубликованы |
-| Настоящие Telegram A/B/C/A1/A2 | Приёмка владельца | **PENDING — user acceptance**, после устранения deploy blocker |
+| Live deploy/миграции | tgcloud push; migrate --safe; migrate --dry-run; status | **PASS — live**: revision1,19 .js +3 static files; schema in sync |
+| Live HTTP/публичный браузер | HTTP200, SHA256 HTML/JS/CSS, Chromium390×844, anonymous endpoint | **PASS — live**: assets идентичны dist,0 page errors; POST без initData →401 |
+| Main Mini App/Menu Button/webhook | getMe; getChatMenuButton; tgcloud webhook | **PASS — live**: main flag true, меню с точным URL, allowed_updates=message |
+| Настоящие Telegram A/B/C/A1/A2 | Приёмка владельца | **PENDING — user acceptance**, окружение готово |
 
 Первые попытки Vitest в Windows sandbox остановились с EPERM realpath **до выполнения assertions**; успешные запуски выполнены в разрешённом обычном окружении. Первый UI-прогон дал8pass/2fail во время изменения исходников/HMR; стабильный повтор дал10/10. Три добавленных synthetic bridge теста сначала получили outside-Telegram экран: официальный SDK перезаписывал тестовый контекст. Исправлен только harness (перехват скрипта для этих тестов); targeted rerun дал3/3. Итог ниже включает весь набор. Неуспешные ранние попытки не скрываются и не считаются PASS.
 
@@ -87,8 +89,8 @@
 | Back navigation | PASS — implemented Telegram BackButton; reload smoke; live Telegram buttons pending |
 | Отсутствие чужих ссылок/копии ассетов | PASS — source/visual review, только оригинальные SVG |
 | Секреты и CI | PASS — scanner; CI workflow создан, cloud run статус смотреть в PR |
-| Бот/Main Mini App/Menu Button URL | BLOCKED — нет фактического deploy URL; точный checklist подготовлен |
-| Миграция cloud schema | BLOCKED — access token отсутствует; schema только additive |
+| Бот/Main Mini App/Menu Button URL | PASS — live: @chipperhatcherybot, main flag true, меню «Играть» с production URL |
+| Миграция cloud schema | PASS — live:1 новая таблица, applied1/skipped0; повторный dry-run без изменений |
 | Android/iOS/Desktop/Web внутри Telegram | PENDING — user acceptance |
 | Контролируемый staging reset | Не предоставлен destructive endpoint; при необходимости отдельная ручная staging операция |
 
@@ -96,12 +98,30 @@
 
 Исправлены невидимые Unicode-имена, контроль частоты брошенных attempts, dark fallback при открытии без Telegram launch, блокировка background refresh на конце мини-игры и возвращение в «Активности» после expired/cancelled finish. Новых подтверждённых дефектов после исправления review не обнаружил; это не гарантирует отсутствие ошибок в непроверенном live runtime.
 
-Остаются: доступ/деплой/миграция/реальные аккаунты; бессрочно растущий aggregate с receipts/attempts/history; ограниченный MVP античит; формальная публичная privacy/deletion policy перед открытым релизом. Таймеры/покупка/выдача не имеют клиентских production заглушек.
+Остаются: приёмка нескольких реальных аккаунтов и устройств; бессрочно растущий aggregate с receipts/attempts/history; ограниченный MVP античит; формальная публичная privacy/deletion policy перед открытым релизом. Таймеры/покупка/выдача не имеют клиентских production заглушек.
 
-Владельцу: выполнить [DEPLOYMENT_0.1.md](DEPLOYMENT_0.1.md), записать реальный URL и SHA, затем U01–U16 и C01–C14 с A/B/C и A1/A2. PR не мержить до решения по живой приёмке.
+Владельцу: выполнить U01–U16 и C01–C14 с A/B/C и A1/A2 через [опубликованную Mini App](https://t.me/chipperhatcherybot?startapp), фиксируя устройства и результаты. Путь повторного выпуска: [DEPLOYMENT_0.1.md](DEPLOYMENT_0.1.md). PR не мержить до решения по живой приёмке.
 
 ## Финальная запись кандидата
 
 Проверенный игровой код: `81d3572c96fad219bbed4807ef181196dc02fe4a`. Команды: `npm run check` — PASS, `npm run test:ui` —13/13 PASS, `npm run lint` после правки harness — PASS, `node scripts/check-secrets.mjs` после коммитов — PASS. Полный локальный browser run завершился12.10.2026, около22:30 Europe/Samara. После этого изменены документация, screenshots, CI fetch-depth и ожидание подтверждённой активации в browser test; игровые исходники остаются проверенными.
 
-[PR #1](https://github.com/tracerxbrhd/chipper-hatchery/pull/1), `feature/chipper-v0.1` → `main`, создан12.10.2026 22:32 Europe/Samara. **Открыт, не смержен.** Снимок реализации с отчётом при создании PR: `4a9b9aab2f8fc921c7b6f35c81da8b758073a6fa`. Живого Mini App URL нет; cloud migration не применялась. Скриншоты: [qa/README.md](qa/README.md).
+[PR #1](https://github.com/tracerxbrhd/chipper-hatchery/pull/1), `feature/chipper-v0.1` → `main`, создан12.10.2026 22:32 Europe/Samara. **Открыт, не смержен.** Снимок реализации с отчётом при создании PR: `4a9b9aab2f8fc921c7b6f35c81da8b758073a6fa`. На момент создания access/deploy были заблокированы; блокер устранён следующим живым выпуском. Скриншоты: [qa/README.md](qa/README.md).
+
+## Живой выпуск 12.10.2026, около23:40–23:45 Europe/Samara
+
+- Пользователь выполнил local login; CLI сохранил токен, но direct Node fetch получил `UND_ERR_CONNECT_TIMEOUT`. DNS указывал149.154.166.100, TCP443 не проходил. Пользователь подтвердил системный VPN proxy; Windows использовал127.0.0.1:10808. Через этот уже настроенный proxy с `NODE_USE_ENV_PROXY=1` соединение и `tgcloud fetch` прошли. Токен не читался вручную и не передавался другому API-host.
+- Read-only cloud probe подтвердил **@chipperhatcherybot**, bot ID8924974998; до деплоя было0 модулей/revision0 и0 таблиц. `getMe`/`sqlite_master` не создавали игроков.
+- Первый `push` был отклонён до публикации из-за запрещённого пользовательского `X-Content-Type-Options`. Конфигурация исправлена; платформа сама отдаёт `nosniff`. После исправления повторный `npm run check` дал62/62, typecheck/lint/build/isolation/secrets PASS.
+- Успешный `push` опубликованного SHA **19e9051b6348a0cc68294b71580511301f8b66ba** напечатал **https://app8924974998.tgcloud.ai/**. Миграция добавила только `chipper_players`: applied1, skipped0. Повторный dry-run: no changes. Итоговый status: revision1, working directory clean,3 static files up to date.
+- Webhook: `https://cloud.telegram.org/app8924974998/webhook`, allowed updates `message`, pending0, in sync. Missing-user cloud runtime вызов `bootstrap` вернул `UNAUTHORIZED`, без создания тестового профиля. Публичный HTTP POST `/api/bootstrap` без initData вернул401. Ни административный ctx, ни этот отказ не доказывают всю матрицу подписей/аккаунтов.
+- `setChatMenuButton` вернул true; последующее отдельное чтение подтвердило меню `web_app`, текст «Играть», точный URL. Владелец настроил Main Mini App в BotFather и ответил «готово»; повторный `getMe` подтвердил `has_main_web_app=true`. Read-only счётчик показал1 профиль после входа владельца; вымышленные Telegram IDs для bootstrap не использовались. Игровое содержимое этого профиля не выводилось.
+- Независимый Chromium проверил production вне Telegram: HTTP200, экран запуска в Telegram, нет навигации/dev-баннера,0 page errors. [Скриншот](qa/live-outside-telegram.png). HTML/JS/CSS возвращают HTTP200 и совпадают с проверенным локальным dist по SHA256:
+
+| Файл | SHA256 |
+|---|---|
+| index.html | 75ec81ca178c2c6ded3932fc7c3410e84b017b9a8940dfec0140627836e6c639 |
+| assets/index-BWMKDnyw.js | fc91ce224e91971c415f9e6ade6edb4ae6239fe56d9cb039b7879f6d92d32d09 |
+| assets/index-CaIi6bTI.css | b670893cc092a1af88b1928fb6c2f62770de987d1d2936e01fce1a94f3e1c5a3 |
+
+Временные административные probes не деплоились и не коммитились; их локальные файлы удалены. Публичного диагностического endpoint нет. После SHA19e9051 изменяется только отчётность; игровые исходники и опубликованные assets остаются теми же. Проверки A/B/C, A1/A2 и настоящих таймеров выполняет владелец; их статус не повышен автоматически.

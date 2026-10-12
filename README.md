@@ -34,6 +34,8 @@ npm run test:ui
 
 ## Сервер и выпуск
 
+Живая версия0.1 опубликована12.10.2026: [открыть Chipper в Telegram](https://t.me/chipperhatcherybot?startapp), [production URL](https://app8924974998.tgcloud.ai/). Схема, Main Mini App, Menu Button «Играть» и webhook настроены; версия ожидает приёмки нескольких аккаунтов. Для Windows с системным VPN proxy смотрите раздел proxy в инструкции деплоя.
+
 React + TypeScript + Vite; plain JavaScript в `tgcloud/`; официальный Telegram Serverless SDK и встроенная SQLite. Клиент вызывает `Telegram.WebApp.Serverless.call`. Платформа проверяет initData, endpoint дополнительно требует корректный `ctx.initData.user.id` и проверяет принадлежность каждого объекта.
 
 Все эффекты одного игрока находятся в агрегате `chipper_players`. Единственное условное `UPDATE ... WHERE revision = expected RETURNING revision` сохраняет птиц, баланс, яйца, попытки и receipt вместе. При конфликте переход пересчитывается. Это избегает зависимости от неподтверждённых многозапросных транзакций SDK.

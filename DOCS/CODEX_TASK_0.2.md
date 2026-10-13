@@ -58,7 +58,7 @@
 Владение: `src/games/flaps/**`, `src/screens/GameScreens.tsx` и отдельные тесты engine в согласованной собственной папке. Physics/touch/collisions/score/result/restart/hidden-state, original obstacles, sprite текущей птицы, профилирование. Не меняет серверную экономику самостоятельно.
 
 **Agent E — Backend / save format / migrations.**  
-Владение: `tgcloud/**`. Версия внешности V2 server-only, без legacy renderer, CAS/receipt, `startFlapsRun`/`finishFlapsRun`, общий 20ч cooldown, anti-abuse, personal best и новые schemaVersion=2 сохранения, bounded-attempts или безопасная политика storage роста. Обычные запросы и deploy не сбрасывают данные. Единственная административная очистка выполняется через проверенный reset helper и durable release marker.
+Владение: `tgcloud/**`. Версия внешности V2 server-only, без legacy renderer, CAS/receipt, `startFlapsRun`/`finishFlapsRun`, общий 20 ч cooldown, anti-abuse, personal best и новые schemaVersion=2 сохранения, bounded-attempts или безопасная политика storage роста. Обычные запросы и deploy не сбрасывают данные. Единственная административная очистка выполняется через проверенный reset helper и durable release marker.
 
 **Agent F — QA / regressions / release audit.**  
 Владение: `tests/**`, `scripts/**`, UI visual regression fixtures и отчёты QA (при согласованной интеграции). Проверка всех P0 из ACCEPTANCE, симулированной конкуренции, контрактов, reset/fresh-onboarding, mobile viewport, perf, secrets, live checklist.
@@ -109,20 +109,20 @@
 - Конкурентные вызовы сохраняют инварианты: один profile, один hatch, один reward, один finish, idempotent operations, foreign IDs refused.
 - Если реальный UI test без Telegram initData, это browser mock. Не выдавай его за живой подписанный Telegram запуск.
 
-### Phase 4 — live Telegram beta release (AUTHORIZED)
+### Phase 4 — live beta и recovery clean start (AUTHORIZED)
 
-**Владелец прямо разрешил live deploy в существующий бот**, но только после Phase 3 с зелёными блокирующими проверками.
+Владелец уже опубликовал source 7fd2486d3233e6f560620017d00f478568cacb4d/cloud revision 2/https://app8924974998.tgcloud.ai/. Старыйhelper получил SQL `Failed to prepare query [23] not authorized` на первом SELECT sqlite_master после getMe, до любых SQL-записей. Reset НЕ выполнен. Нужно исправить supported процедуру без изменения работающих V2 данных.
 
-1. Чётко определи бот/app ID, baseline cloud revision и текущие серверные файлы (read-only `tgcloud fetch/status/diff`).
-2. Сохрани известный работающий source SHA и процедуру исправления/кодового rollback, совместимого с V2, без повторного сброса БД.
-3. Проверь production build и отсутствие dev mock/secret values.
-4. Сделай безопасную проверку миграций **если они требуются** (`migrate --dry-run`, а для отличия local/deployed при необходимости `--local`). Применять только ожидаемые `--safe` после согласованного `push`.
-5. Если cloud не синхронизирован или обнаружено неожиданное удаление modules/table, останови именно деплой, не force.
-6. После read-only schema/identity проверки выполни неразрушающий reset helper `--prepare` (точные table/trigger без INSERT/DELETE), и только при успехе опубликуй `npx tgcloud push`. Затем однократный reset `--apply` и повторный `--dry-run`. Отказ prepare блокирует публикацию до замены действующего кода. Temporary reset endpoint не размещай в deploy. Бот только **@chipperhatcherybot**; для Windows proxy следуй проверенным рекомендациям `DOCS/DEPLOYMENT_0.1.md`, без раскрытия токена.
-7. Проверка статуса, манифеста модулей, сайта, отсутствия production dev code, реального URL, доступности Main Mini App. По возможности сделай безопасные signed live actions только на своём разрешённом тестовом аккаунте. Не подделывай A/B/C.
-8. Если обнаружена тяжёлая production регрессия, выполни безопасный rollback к записанному working code, без отката/обнуления БД; если rollback невозможен без риска сохранений — не выполняй рискованных действий, честно обозначь блокер.
+1. Проверить recovery source SHA/clean worktree/test gates; существующий PR#2, без нового PR или merge.
+2. Сначала только `node scripts/reset-game-v0.2.mjs --diagnose`: direct-column SELECT, JSON/ownership/versions, getMe 8924974998/@chipperhatcherybot, receiptTableReady false допустимо до миграции. Без catalog/PRAGMA/runtime DDL/triggers.
+3. Fetch/status/diff и migrate --local --dry-run: только ожидаемая safe новая chipper_release_operations. Неизвестные changes/warnings/manual block.
+4. Schema-only push tgcloud/schema.js, deployed migrate --dry-run, затем только проверенный migrate --safe. Post-migration dry-run обязательно No schema changes; exit0 alone недостаточен.
+5. Dry-run с готовой receipt table → prepare фиксированного status='prepared' плана без DELETE → apply atomic DELETE только schemaVersion=1 с pending guard → отдельный completion CAS после нуля V1 → dry-run/fetch/status. V2, созданные после публикации, сохраняются.
+6. После prepared запрещены 0.1 writers/rollback; replay/lostresponse возобновляет тот же план и не удаляет V2. DELETE+completion не выдавать за общую транзакцию. Неподдерживаемый SQL/DML — blocker без destructive fallback.
+7. Temporary endpoint толькоlocalCLIrun, finally cleanup, не deploy; wrapper prepare/apply требует clean source и exact in-sync CLI schema dry-run output.
+8. Записать новые actualSHA/revision/receipt/counts/URL и real acceptance. Каждую фазу проверять до следующей, не давать весь changingrunbook одним multilinepaste; безопасные последовательности &&.
 
-**Не требуй отдельного подтверждения на обычный безопасный deploy**, оно уже получено в задании. Но не придумывай credentials, если доступа действительно нет. В этом случае закончи код, открой PR и дай точные команды владельцу.
+Штатный deploy и один логический reset уже разрешены, отдельное подтверждение не нужно. Проверки платформенных ограничений и недостающего evidence не обходятся разрешением на reset. Сейчас владельцу первым шагом выдаётся только read-onlydiagnose; следующие фазы зависят от результата.
 
 ### Phase 5 — отчёт + PR
 
@@ -135,7 +135,7 @@
 
 ### Единственный разрешённый чистый старт
 
-- Таблицу `chipper_players` сохраняй. Все старые игровые строки удали ровно один раз через `node scripts/reset-game-v0.2.mjs --apply`: проверенная идентичность, фактическая схема, атомарная очистка + persistent marker. По умолчанию helper работает read-only (`--dry-run`). Системные/чужие ресурсы сохраняются.
+- Таблицу `chipper_players` сохраняй. Все старые игровые строки удали ровно один раз через `node scripts/reset-game-v0.2.mjs --apply`: проверенная identity/JSON/ownership и штатная схема; prepared план, atomic DELETE только V1 и отдельный completed CAS. V2 сохраняется; после prepared0.1 writers запрещены. По умолчанию helper работает read-only (`--dry-run`). Системные/чужие ресурсы сохраняются.
 - НЕ меняй устройство серверного CAS без доказательной необходимости. Новое поле рекорда/genes должно входить в ту же атомарную запись вместе с receipt/reward.
 - НЕ выбрасывай старые `operationId` receipts без корректной replay-safe стратегии; длинная история — технический долг, но наивное `slice(-50)` может вернуть двойные покупки.
 - НЕ превращай случайный seed V2 в единственный источник генетики. Сохрани полную версионированную конфигурацию.
@@ -154,7 +154,7 @@
 
 - Не вводить NFT/крипто, торговлю, рекламу, звёзды или смерть питомцев.
 - Функции `chickId`, `runId` проверяются на ownership; Telegram ID берётся из verified backend context, а не из client input.
-- Награда за мини-игру максимум +1 раз/20ч; клиентский score не влияет на пёрышки. Рекорд не публичный/не античит-гарантированный.
+- Награда за мини-игру максимум +1 раз/20 ч; клиентский score не влияет на пёрышки. Рекорд не публичный/не античит-гарантированный.
 - Не выводить в PR/логи Telegram credentials, initData, содержимое частных профилей, чужие ID.
 - Внешние поставщики и аналитика не нужны; никаких post-to-external endpoints.
 

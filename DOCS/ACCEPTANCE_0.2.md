@@ -66,14 +66,18 @@
 
 | ID | Сценарий | Pass criteria |
 |---|---|---|
-| R01 | Read-only dry-run | Подтверждены @chipperhatcherybot/8924974998, таблицы и число профилей; нет записи |
-| R02 | Неверная идентичность/схема/неизвестная Chipper-таблица | Отказ до удаления данных |
-| R03 | Apply на старых аккаунтах | Все игровые агрегаты очищены, сторонняя конфигурация сохранена, marker записан атомарно |
-| R04 | Replay / lost response / concurrent apply | Marker и deletion ровно один раз; новая запись после reset не удалена |
-| R05 | Bootstrap A/B после reset | Нулевой баланс и рекорды, onboarding egg, одно стартовое яйцо, новая V2 птица при hatch |
-| R06 | Повторный обычный deploy | Сохраняется прогресс 0.2, reset не запускается автоматически |
-| R07 | Temporary reset endpoint | Не находится в опубликованном manifest; локальный helper удаляет его даже при ошибке |
-| R08 | Prepare до push / неподдерживаемый CREATE TRIGGER | Prepare не меняет игроков и не вставляет marker; capability refusal останавливает publish до замены 0.1 |
+| R01 | Read-only diagnose до миграции | getMe совпадает, direct-column/JSON probe/ownership PASS, countsV1/V2; receiptTableReady=false допустимо; записей нет |
+| R02 | Неверная identity / JSON / schemaVersion / ownership | Prepare/apply отказывают до удаления; неожиданный CLI migration plan блокируется |
+| R03 | Schema-only migration и applyV1 | Только receipt table добавлена штатно; final dry-run No schema changes; все V1 агрегаты удалены, V2/сторонние данные сохранены |
+| R04 | Concurrent apply / lost DELETE / lost completion response | Один эффект очистки V1; prepared план возобновляется, V2 не удаляются; completed CAS ровно один переход |
+| R05 | Bootstrap бывшего V1 A/B после reset | Нулевой прежний баланс/рекорд, onboarding egg, одно новое starter, V2 hatch; существовавшие V2 сохраняются |
+| R06 | Повторный ordinary deploy | Прогресс V2 сохраняется, reset автоматически не запускается |
+| R07 | Temporary reset endpoint | Не публикуется, helper удаляет его даже при ошибке |
+| R08 | Prepare | Receipt status=prepared/source SHA/planned_legacy_players фиксирован; DELETE отсутствует, только V2 writers после подготовки |
+| R09 | Dry-run до receipt migration / незавершённые warnings | Dry-run требует receipt table; prepare/apply schema guard отказывает даже при exit0 CLI с неожиданным output |
+| R10 | V1 появился после completed | RESET_LEGACY_AFTER_COMPLETION/blocked, никаких новых DELETE или изменения completion |
+
+Это DML/version fence design: legacy DELETE атомарен, receipt completion отдельный CAS; не утверждать общую транзакцию marker+DELETE. SQLite tests с запрещёнными catalog/PRAGMA/DDL и разрешёнными DML не являются live DML proof.
 
 ## 4. Living World (P0)
 
@@ -100,14 +104,14 @@
 | F06 | Пройденное препятствие | +1 score ровно один раз и только после прохождения |
 | F07 | Active chick V2 / длинный хвост/клюв | Отрисована именно выбранная птица со всеми признаками, а не generic sprite |
 | F08 | Игрок падает через 1 секунду | Результат показывается; награда по min-duration не начислена; можно мгновенно начать снова |
-| F09 | Игрок завершает попытку через ≥2с после старта | При открытом cooldown получает ровно +1 пёрышко, score не влияет на выплату |
+| F09 | Игрок завершает попытку через ≥2 с после старта | При открытом cooldown получает ровно +1 пёрышко, score не влияет на выплату |
 | F10 | Продолжение в пределах 20 ч | Повторы играются, рекорд улучшается, но новых пёрышек нет |
 | F11 | Старый протокол GrainGame после обновления | Отказ без попытки/награды; Flaps cooldown соблюдается при повторных деплоях |
 | F12 | Два finish с одним operationId | Один receipt, один reward, одинаковый ответ |
 | F13 | Два разных finish/две параллельные сессии | CAS не позволяет double reward или два результата одной попытки |
 | F14 | Подставной чужой runId/TelegramId | Сервер отказывает, другой игрок не изменён |
-| F15 | Счёт 10000 при elapsed 3с | Срабатывает plausibility guard |
-| F16 | Сворачивание/возобновление после 3с | Нет huge frame delta и мгновенного collision от фонового времени |
+| F15 | Счёт 10000 при elapsed 3 с | Срабатывает plausibility guard |
+| F16 | Сворачивание/возобновление после 3 с | Нет huge frame delta и мгновенного collision от фонового времени |
 | F17 | Возобновление после TTL | Понятное сообщение/выход, без награды |
 | F18 | Смена аккаунта Telegram во время pending finish | Старый ответ отвергнут, чужой рекорд не показывается |
 | F19 | Back/leave во время полёта | Нет ложного score/reward, возврат корректен |
@@ -123,7 +127,7 @@
 - смена активной птицы, переименование, коллекция, карточка;
 - уход/сон/рост/потребности и безопасный минимум 35, **никакой смерти**;
 - 6 пёрышек за яйцо, 3-часовая инкубация, один слот, ручной hatch;
-- cooldown заботы 4ч и care reward 20ч;
+- cooldown заботы 4 ч и care reward 20 ч;
 - невалидные/chickId чужого аккаунта; повторы CAS; отсутствие mock auth в production;
 - офлайн/перезаход, восстановление state и собственных данных;
 - отсутствие paywall/NFT/монетизации.
@@ -137,8 +141,8 @@
 | D01 | Cloud bot identity | `@chipperhatcherybot`, App ID 8924974998, секреты не выводятся |
 | D02 | Read-only cloud status/diff/fetch перед записью | Нет необъяснимых удаляемых модулей и чужих изменений |
 | D03 | `npm run check`, `npm run test:ui`, дополнительные тесты | Все выполнены и documented PASS, нет скрытых FAIL |
-| D04 | SQL schema/reset dry-run | Точная схема chipper_players, нет неизвестных Chipper-таблиц/триггеров; только адресный authorized reset |
-| D05 | `tgcloud push` без `--force` | Получена новая cloud revision; однократный reset подтверждён receipt, обычный deploy данных не удаляет |
+| D04 | Supported CLI schema plan / direct-table reset diagnosis | Только ожидаемая receipt table, без warnings/manual/сторонних изменений; JSON/ownership/known versions подтверждены; каталоги SDK не читаются |
+| D05 | `tgcloud push` без `--force` | Получена новая cloud revision; однократный legacy-only reset подтверждён completed receipt и countV1=0; V2 и ordinary deploy сохраняются |
 | D06 | HTTP URL Mini App/Telegram меню | HTML/CSS/JS доступны; бот открывает новый клиент |
 | D07 | Android live smoke владельца | Дом не скроллится, Flaps играбелен, новая V2 птица и новое onboarding доступны |
 | D08 | При необходимости откат | Существует точный SHA и процедура переотправки предыдущего кода **без** удаления БД |
@@ -154,7 +158,7 @@
 |---|---|---|
 | U01 | A (бывший аккаунт 0.1) входит после reset | Первоначальное onboarding, нулевой прогресс, новое бесплатное яйцо и новый V2 питомец |
 | U02 | B новый аккаунт 0.2 вылупляет первую птицу | Получает V2, правильные редкость и визуал |
-| U03 | C новый аккаунт | Отдельный профиль, состояние B не видно |
+| U03 | C новый аккаунт и B уже V2 до reset | C независим; новое состояние B сохраняется после очистки V1 |
 | U04 | A выбирает другой активный цыплёнок | Scene/Flaps отражают только его выбор |
 | U05 | A и B играют одновременно | Независимые score/bestScore/reward cooldown |
 | U06 | A1/A2 играют/получают награду одновременно | Сервер начисляет пёрышко только один раз |

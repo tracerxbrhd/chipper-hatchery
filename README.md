@@ -29,17 +29,17 @@ npm run test:ui
 
 React + TypeScript + Vite; JavaScript Telegram Serverless SDK и SQLite. Официальный Serverless.call передаёт verified initData; ownership проверяет сервер. Все эффекты и receipts одного игрока коммитятся одним UPDATE с revision CAS.
 
-Владелец разрешил **ровно один reset игрового прогресса при переходе на 0.2**. После него каждый аккаунт получает новое onboarding, стартовое яйцо и V2 птицу с нулевым балансом. Системные/сторонние ресурсы и секреты сохраняются. Последующие deploy не сбрасывают данные. Deployed reset endpoint отсутствует.
+По логу владельца Termux **beta 0.2 опубликована**: source `7fd2486d3233e6f560620017d00f478568cacb4d`, cloud revision **2**, [https://app8924974998.tgcloud.ai/](https://app8924974998.tgcloud.ai/). На опубликованном checkpoint 161/161 unit PASS; новый recovery gate — 184/184 в 12 файлах, без изменения frontend assets. Это не подтверждает reset: прежний helper отказал на первом SELECT sqlite_master с `Failed to prepare query [23] not authorized`, до любых SQL-записей.
 
-```powershell
-node scripts/reset-game-v0.2.mjs --dry-run
-node scripts/reset-game-v0.2.mjs --prepare
-# Только после проверки приложения, сборки и публикации кандидата:
-node scripts/reset-game-v0.2.mjs --apply
-node scripts/reset-game-v0.2.mjs --dry-run
+Владелец разрешил один clean start старого schemaVersion=1 прогресса. Исправленный recovery сохраняет V2 аккаунты, которые могли появиться после публикации. Каталоги/PRAGMA/runtimeDDL/triggers исключены; receipt table добавляется только штатным schema-only push/migrate --safe. Prepared план → atomic legacy-only DELETE → separate completed CAS; общей транзакции marker+DELETE нет. Replay/lost response безопасны при неизменной границе V1/V2 и только V2 writers после prepared. Последующие deploy не сбрасывают данные; admin endpoint не публикуется.
+
+Первый recovery шаг после перехода на точный SHA исправления — только read-only:
+
+```bash
+node scripts/reset-game-v0.2.mjs --diagnose
 ```
 
-Полный порядок: [DEPLOYMENT_0.2.md](DOCS/DEPLOYMENT_0.2.md). Live URL исторической 0.1: [https://app8924974998.tgcloud.ai/](https://app8924974998.tgcloud.ai/); фактический статус нового publish/reset — в [ACCEPTANCE_RESULT_0.2.md](DOCS/ACCEPTANCE_RESULT_0.2.md). Наличие старого URL не подтверждает релиз 0.2.
+Полная staged процедура: [DEPLOYMENT_0.2.md](DOCS/DEPLOYMENT_0.2.md), текущая evidence/resetstatus — [ACCEPTANCE_RESULT_0.2.md](DOCS/ACCEPTANCE_RESULT_0.2.md). После diagnosis отдельно проверяется plan новойreceipt table, schema-only push/migration и No schema changes, затем dry-run/prepare/apply/dry-run. При ошибке остановиться; не запускать все changing phases одним multilinepaste. Новое onboarding бывших V1 подтверждается только после успешной очистки; свежий V2 прогресс сохраняется.
 
 ## Приёмка
 

@@ -1,122 +1,142 @@
-// This module is intentionally outside tgcloud: it is never deployed. The CLI
-// wrapper embeds it into one temporary local endpoint for `tgcloud run` only.
+// Embedded by the CLI wrapper into a temporary local module for tgcloud run.
+// Never imported by deployed gameplay. Schema changes belong to tgcloud migrate.
 export const RESET_RELEASE_KEY = 'chipper-v0.2-clean-start';
 export const RESET_BOT_ID = 8924974998;
 export const RESET_BOT_USERNAME = 'chipperhatcherybot';
-export const RESET_TRIGGER_NAME = 'chipper_v02_reset_once';
 
 const markerTable = 'chipper_release_operations';
-const triggerSql = `CREATE TRIGGER ${RESET_TRIGGER_NAME}
-AFTER INSERT ON ${markerTable}
-WHEN NEW.release_key = '${RESET_RELEASE_KEY}'
-BEGIN
-  DELETE FROM chipper_players;
-END`;
-
+const receiptColumns = 'release_key, status, prepared_at, completed_at, planned_legacy_players, remaining_legacy_players, app_id, bot_username, source_sha';
+const legacyPredicate = "json_extract(state_json, '$.schemaVersion') = 1";
 function fail(code) { throw new Error(code); }
-function normalized(sql) { return sql.replace(/\s+/g, ' ').replace(/;\s*$/, '').trim().toLowerCase(); }
-
-async function columns(database, tableName, expected) {
-  const actual = await database.all(`PRAGMA table_info(${tableName})`);
-  if (actual.length !== expected.length || expected.some(([name, type, primaryKey, notNull], index) => {
-    const column = actual[index];
-    return column.name !== name || column.type.toUpperCase() !== type || column.pk !== primaryKey || (notNull && column.notnull !== 1);
-  })) fail('RESET_SCHEMA_MISMATCH');
-  const foreignKeys = await database.all(`PRAGMA foreign_key_list(${tableName})`);
-  if (foreignKeys.length) fail('RESET_FOREIGN_KEYS_UNSUPPORTED');
+function whole(value) { return Number.isSafeInteger(value) && value >= 0; }
+async function read(database, step, query, params) {
+  try { return await database.get(query, params); }
+  catch (error) { throw new Error(`RESET_SQL_${step}: ${error?.message ?? 'query failed'}`); }
+}
+async function write(database, step, query, params) {
+  try { return await database.run(query, params); }
+  catch (error) { throw new Error(`RESET_SQL_${step}: ${error?.message ?? 'query failed'}`); }
 }
 
-const markerColumns = [
-  ['release_key', 'TEXT', 1, true],
-  ['completed_at', 'INTEGER', 0, true],
-  ['deleted_players', 'INTEGER', 0, true],
-  ['app_id', 'INTEGER', 0, true],
-  ['bot_username', 'TEXT', 0, true],
-  ['source_sha', 'TEXT', 0, true],
-];
-
-async function inspect(database) {
-  const objects = await database.all("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE type IN ('table', 'trigger') ORDER BY name");
-  const players = objects.find(object => object.name === 'chipper_players' && object.type === 'table');
-  if (!players) fail('RESET_PLAYERS_TABLE_MISSING');
-  await columns(database, 'chipper_players', [
-    ['telegram_id', 'INTEGER', 1, false],
-    ['revision', 'INTEGER', 0, true],
-    ['state_json', 'TEXT', 0, true],
-  ]);
-  const marker = objects.find(object => object.name === markerTable && object.type === 'table');
-  if (marker) await columns(database, markerTable, markerColumns);
-  const triggers = objects.filter(object => object.type === 'trigger');
-  for (const trigger of triggers) {
-    if (trigger.name === RESET_TRIGGER_NAME) {
-      if (trigger.tbl_name !== markerTable || normalized(trigger.sql) !== normalized(triggerSql)) fail('RESET_TRIGGER_MISMATCH');
-    } else if (trigger.tbl_name === 'chipper_players' || trigger.tbl_name === markerTable || /\bchipper_players\b|\bchipper_release_operations\b/i.test(trigger.sql ?? '')) {
-      fail('RESET_UNKNOWN_TRIGGER');
-    }
+async function receipt(database) {
+  let found;
+  try {
+    found = await read(database, 'RECEIPT_READ', `SELECT ${receiptColumns} FROM ${markerTable} WHERE release_key = :releaseKey`, { ':releaseKey': RESET_RELEASE_KEY });
+  } catch (error) {
+    // A missing additive migration is diagnosable. Authorization, unknown
+    // columns and every other error remain hard blockers, never permission proof.
+    if (/no such table:\s*(?:main\.)?chipper_release_operations\b/i.test(error?.message ?? '')) return { missing: true, value: null };
+    throw error;
   }
-  // Do not return row contents or Telegram IDs. Only aggregate counts and schema
-  // names are necessary to review the intended operation.
-  const count = await database.get('SELECT COUNT(*) AS count FROM chipper_players');
-  const receipt = marker ? await database.get(
-    `SELECT release_key, completed_at, deleted_players, app_id, bot_username, source_sha FROM ${markerTable} WHERE release_key = :releaseKey`,
-    { ':releaseKey': RESET_RELEASE_KEY },
-  ) : null;
-  if (receipt && (receipt.app_id !== RESET_BOT_ID || receipt.bot_username !== RESET_BOT_USERNAME)) fail('RESET_RECEIPT_IDENTITY_MISMATCH');
-  return { count: count.count, receipt, triggerPresent: triggers.some(trigger => trigger.name === RESET_TRIGGER_NAME), tables: objects.filter(object => object.type === 'table').map(object => object.name) };
+  if (found) {
+    if (found.app_id !== RESET_BOT_ID || found.bot_username !== RESET_BOT_USERNAME) fail('RESET_RECEIPT_IDENTITY_MISMATCH');
+    if (found.release_key !== RESET_RELEASE_KEY || !['prepared', 'completed'].includes(found.status)
+      || !whole(found.prepared_at) || !whole(found.planned_legacy_players) || !whole(found.remaining_legacy_players)
+      || found.remaining_legacy_players > found.planned_legacy_players
+      || !/^[a-f0-9]{40}$/.test(found.source_sha ?? '')
+      || (found.status === 'prepared' && found.completed_at !== null)
+      || (found.status === 'completed' && (!whole(found.completed_at) || found.completed_at < found.prepared_at || found.remaining_legacy_players !== 0))) fail('RESET_RECEIPT_INVALID');
+  }
+  return { missing: false, value: found ?? null };
 }
 
-/** Runs only through the administrative CLI, never a deployed Mini App route. */
+async function inspectPlayers(database) {
+  // These queries return aggregate counts only. No IDs or saved game contents
+  // leave the database. They explicitly exercise the required JSON functions.
+  const json = await read(database, 'JSON_PROBE', `SELECT json_valid('{"schemaVersion":1}') AS valid,
+    json_extract('{"schemaVersion":1}', '$.schemaVersion') AS version,
+    json_type('{"schemaVersion":1}', '$.schemaVersion') AS type`);
+  if (json?.valid !== 1 || json.version !== 1 || json.type !== 'integer') fail('RESET_JSON_PROBE_INVALID');
+  const basic = await read(database, 'PLAYERS_READ', `SELECT COUNT(*) AS players,
+    COALESCE(SUM(CASE WHEN typeof(telegram_id) != 'integer' OR telegram_id <= 0
+      OR telegram_id > 9007199254740991 OR typeof(revision) != 'integer' OR revision < 0 OR revision > 9007199254740991
+      OR typeof(state_json) != 'text' OR json_valid(state_json) != 1 THEN 1 ELSE 0 END), 0) AS invalidRows
+    FROM chipper_players`);
+  if (!whole(basic?.players) || !whole(basic?.invalidRows)) fail('RESET_QUERY_RESULT_INVALID');
+  if (basic.invalidRows) fail('RESET_INVALID_GAME_DATA');
+  // Never evaluate json_extract on malformed JSON. SQL missing/type mismatches
+  // are counted as invalid rather than silently escaping the deletion filter.
+  const versions = await read(database, 'VERSIONS_READ', `SELECT
+    COALESCE(SUM(CASE WHEN json_type(state_json, '$') != 'object'
+      OR COALESCE(json_type(state_json, '$.schemaVersion'), '') != 'integer'
+      OR COALESCE(json_extract(state_json, '$.schemaVersion'), -1) NOT IN (1, 2)
+      OR COALESCE(json_type(state_json, '$.player.telegramId'), '') != 'text'
+      OR COALESCE(json_extract(state_json, '$.player.telegramId'), '') != CAST(telegram_id AS TEXT)
+      THEN 1 ELSE 0 END), 0) AS invalidRows,
+    COALESCE(SUM(CASE WHEN ${legacyPredicate} THEN 1 ELSE 0 END), 0) AS legacyPlayers,
+    COALESCE(SUM(CASE WHEN json_extract(state_json, '$.schemaVersion') = 2 THEN 1 ELSE 0 END), 0) AS currentV2Players
+    FROM chipper_players`);
+  if (!whole(versions?.invalidRows) || !whole(versions?.legacyPlayers) || !whole(versions?.currentV2Players)) fail('RESET_QUERY_RESULT_INVALID');
+  if (versions.invalidRows) fail('RESET_INVALID_GAME_DATA');
+  return { players: basic.players, legacyPlayers: versions.legacyPlayers, currentV2Players: versions.currentV2Players };
+}
+
+/** Administrative CLI only. One logical version-fenced reset, resumable by DML.
+ * DELETE and receipt completion are separate statements: we do not claim an
+ * atomic multi-statement transaction. A pending receipt survives interruptions;
+ * replay can only delete V1 rows, never V2 progress. A completed receipt disables
+ * every subsequent DELETE, even if someone later injects a legacy row.
+ */
 export async function resetGameV02({ database, api, now = Date.now }, input = {}) {
-  if (!['dry-run', 'prepare', 'apply'].includes(input.mode)) fail('RESET_MODE_REQUIRED');
+  if (!['diagnose', 'dry-run', 'prepare', 'apply'].includes(input.mode)) fail('RESET_MODE_REQUIRED');
   if (input.releaseKey !== RESET_RELEASE_KEY) fail('RESET_RELEASE_KEY_MISMATCH');
-  if (input.mode !== 'dry-run' && !/^[a-f0-9]{40}$/.test(input.sourceSha ?? '')) fail('RESET_SOURCE_SHA_REQUIRED');
+  if (['prepare', 'apply'].includes(input.mode) && !/^[a-f0-9]{40}$/.test(input.sourceSha ?? '')) fail('RESET_SOURCE_SHA_REQUIRED');
   const me = await api.getMe();
   if (me.id !== RESET_BOT_ID || me.username !== RESET_BOT_USERNAME || me.is_bot !== true) fail('RESET_BOT_IDENTITY_MISMATCH');
   const identity = { appId: RESET_BOT_ID, bot: `@${RESET_BOT_USERNAME}` };
-  const before = await inspect(database);
-  if (input.mode === 'dry-run') return { mode: 'dry-run', ...identity, tables: before.tables, players: before.count, alreadyApplied: Boolean(before.receipt), receipt: before.receipt };
-  if (before.tables.some(name => name.startsWith('chipper_') && name !== 'chipper_players' && name !== markerTable)) fail('RESET_UNKNOWN_GAME_TABLE');
-  if (before.receipt) {
-    if (input.mode === 'prepare') return { mode: 'prepare', ...identity, prepared: false, alreadyApplied: true, receipt: before.receipt, currentPlayers: before.count };
-    // A lost post-commit response must never make a second reset delete players
-    // created after the first reset. Cleaning the known temporary trigger is safe.
-    if (before.triggerPresent) await database.run(`DROP TRIGGER ${RESET_TRIGGER_NAME}`);
-    return { mode: 'apply', ...identity, applied: false, alreadyApplied: true, receipt: before.receipt, currentPlayers: before.count };
-  }
-  // Supported raw SDK SQL: no assumptions about undocumented db.transaction or
-  // a made-up SQL CLI. The trigger lets the INSERT and targeted DELETE share one
-  // SQLite statement transaction, including on lost responses and concurrent runs.
-  await database.run(`CREATE TABLE IF NOT EXISTS ${markerTable} (
-    release_key TEXT PRIMARY KEY NOT NULL,
-    completed_at INTEGER NOT NULL,
-    deleted_players INTEGER NOT NULL CHECK (deleted_players >= 0),
-    app_id INTEGER NOT NULL,
-    bot_username TEXT NOT NULL,
-    source_sha TEXT NOT NULL
-  )`);
-  await columns(database, markerTable, markerColumns);
-  await database.run(triggerSql.replace('CREATE TRIGGER', 'CREATE TRIGGER IF NOT EXISTS'));
-  // Recheck an existing trigger before any deletion; IF NOT EXISTS must not hide
-  // an unrelated object under the chosen name.
-  const prepared = await inspect(database);
+  const before = await inspectPlayers(database);
+  const found = await receipt(database);
+  if (input.mode === 'diagnose') return {
+    mode: 'diagnose', ...identity, ...before, jsonFunctionsReady: true, receiptTableReady: !found.missing,
+    alreadyApplied: found.value?.status === 'completed', receipt: found.value,
+  };
+  if (found.missing) fail('RESET_RECEIPT_TABLE_MISSING');
+  if (input.mode === 'dry-run') return {
+    mode: 'dry-run', ...identity, ...before, jsonFunctionsReady: true, receiptTableReady: true,
+    alreadyApplied: found.value?.status === 'completed', receipt: found.value,
+  };
+  if (found.value?.status === 'completed') return {
+    mode: input.mode, ...identity, prepared: false, applied: false, alreadyApplied: true,
+    receipt: found.value, currentPlayers: before.players, legacyPlayers: before.legacyPlayers, currentV2Players: before.currentV2Players,
+    blocked: before.legacyPlayers > 0, blockedCode: before.legacyPlayers > 0 ? 'RESET_LEGACY_AFTER_COMPLETION' : null,
+  };
+  const timestamp = now();
+  if (!whole(timestamp)) fail('RESET_TIME_INVALID');
   if (input.mode === 'prepare') {
-    // Capability probe before publishing V2: the exact trigger is installed but
-    // never fired, so existing 0.1 saves and the release receipt remain untouched.
-    return { mode: 'prepare', ...identity, prepared: !prepared.receipt, alreadyApplied: Boolean(prepared.receipt), receipt: prepared.receipt, currentPlayers: prepared.count };
+    await write(database, 'PREPARE_CLAIM', `INSERT INTO ${markerTable} (${receiptColumns})
+      VALUES (:releaseKey, 'prepared', :preparedAt, NULL,
+        (SELECT COUNT(*) FROM chipper_players WHERE ${legacyPredicate}),
+        (SELECT COUNT(*) FROM chipper_players WHERE ${legacyPredicate}), :appId, :botUsername, :sourceSha)
+      ON CONFLICT (release_key) DO NOTHING`, {
+      ':releaseKey': RESET_RELEASE_KEY, ':preparedAt': timestamp, ':appId': RESET_BOT_ID,
+      ':botUsername': RESET_BOT_USERNAME, ':sourceSha': input.sourceSha,
+    });
+    const prepared = (await receipt(database)).value;
+    if (!prepared) fail('RESET_RECEIPT_MISSING');
+    return { mode: 'prepare', ...identity, prepared: prepared.status === 'prepared', alreadyApplied: prepared.status === 'completed',
+      receipt: prepared, currentPlayers: before.players, legacyPlayers: before.legacyPlayers, currentV2Players: before.currentV2Players };
   }
-  const inserted = await database.run(`INSERT INTO ${markerTable}
-    (release_key, completed_at, deleted_players, app_id, bot_username, source_sha)
-    VALUES (:releaseKey, :completedAt, (SELECT COUNT(*) FROM chipper_players), :appId, :botUsername, :sourceSha)
-    ON CONFLICT (release_key) DO NOTHING
-    RETURNING release_key, completed_at, deleted_players, app_id, bot_username, source_sha`, {
-    ':releaseKey': RESET_RELEASE_KEY,
-    ':completedAt': now(),
-    ':appId': RESET_BOT_ID,
-    ':botUsername': RESET_BOT_USERNAME,
-    ':sourceSha': input.sourceSha,
+  if (!found.value) fail('RESET_NOT_PREPARED');
+  // The gate is inside the DELETE itself, so a late concurrent caller cannot
+  // execute a new deletion after another caller has completed this release.
+  await write(database, 'LEGACY_DELETE', `DELETE FROM chipper_players WHERE ${legacyPredicate}
+    AND json_type(state_json, '$.schemaVersion') = 'integer'
+    AND EXISTS (SELECT 1 FROM ${markerTable} WHERE release_key = :releaseKey AND status = 'prepared'
+      AND app_id = :appId AND bot_username = :botUsername)`, {
+    ':releaseKey': RESET_RELEASE_KEY, ':appId': RESET_BOT_ID, ':botUsername': RESET_BOT_USERNAME,
   });
-  const after = await inspect(database);
-  if (!after.receipt) fail('RESET_RECEIPT_MISSING');
-  if (after.triggerPresent) await database.run(`DROP TRIGGER IF EXISTS ${RESET_TRIGGER_NAME}`);
-  return { mode: 'apply', ...identity, applied: inserted.rows.length === 1, alreadyApplied: inserted.rows.length === 0, receipt: after.receipt, currentPlayers: after.count };
+  const after = await inspectPlayers(database);
+  if (after.legacyPlayers !== 0) fail('RESET_LEGACY_PLAYERS_REMAIN');
+  const completed = await write(database, 'COMPLETE_RECEIPT', `UPDATE ${markerTable} SET status = 'completed', completed_at = :completedAt,
+    remaining_legacy_players = 0 WHERE release_key = :releaseKey AND status = 'prepared'
+      AND app_id = :appId AND bot_username = :botUsername
+      AND NOT EXISTS (SELECT 1 FROM chipper_players WHERE ${legacyPredicate})
+    RETURNING release_key`, {
+    ':releaseKey': RESET_RELEASE_KEY, ':completedAt': Math.max(timestamp, found.value.prepared_at),
+    ':appId': RESET_BOT_ID, ':botUsername': RESET_BOT_USERNAME,
+  });
+  const finalReceipt = (await receipt(database)).value;
+  if (finalReceipt?.status !== 'completed') fail('RESET_COMPLETION_NOT_CONFIRMED');
+  return { mode: 'apply', ...identity, applied: completed.rows.length === 1, alreadyApplied: completed.rows.length === 0,
+    receipt: finalReceipt, currentPlayers: after.players, legacyPlayers: after.legacyPlayers, currentV2Players: after.currentV2Players };
 }

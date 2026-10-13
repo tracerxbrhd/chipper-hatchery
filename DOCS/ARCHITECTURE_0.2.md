@@ -1,8 +1,8 @@
-# CHIPPER 0.2 — техническая архитектура, совместимость и деплой
+# CHIPPER 0.2 — техническая архитектура и восстановление clean start
 
 **Статус:** design contract для Codex; проверять на текущем checkout и версии SDK перед реализацией.  
 **Связанные документы:** `GDD_0.2.md`, `CHICK_SYSTEM_0.2.md`, `CHIPPSTER_FLAPS_0.2.md`, `ACCEPTANCE_0.2.md`.  
-**Исходный продакшен:** `@chipperhatcherybot`, Telegram Serverless, `https://app8924974998.tgcloud.ai/` — URL зафиксирован в отчёте 0.1, при публикации проверить фактический URL по CLI.
+**Опубликованная beta:** по логу владельца Termux source `7fd2486d3233e6f560620017d00f478568cacb4d`, cloud revision 2, `https://app8924974998.tgcloud.ai/`, `@chipperhatcherybot` / App ID 8924974998. Однократный reset пока не завершён; recovery получает отдельный source SHA.
 
 ## 1. Подтверждённая кодовая база на момент планирования
 
@@ -76,15 +76,24 @@ Renderer 0.1 и визуальная совместимость старых о�
 
 Новый aggregate имеет `schemaVersion=2`. Старые schemaVersion=1 не мигрируются и не удаляются автоматически: запрос получает `RESET_REQUIRED` до разрешённой административной очистки. Повторный bootstrap после reset создаёт один новый профиль, нулевой баланс, onboarding='egg', бесплатное готовое стартовое яйцо и пустую коллекцию. Повторная выдача стартового подарка в дальнейшем невозможна.
 
-### 3.5 Ровно один reset
+### 3.5 Один логический reset с неизменяемой версионной границей
 
-Владелец разрешил полный сброс игрового прогресса в закрытой beta. Все игровые данные 0.1 находятся в `chipper_players`, поэтому очищаются только строки этой таблицы. Таблица, системные данные Telegram, конфигурация, токены и сторонние ресурсы не удаляются.
+В закрытой beta владелец разрешил очистить игровой прогресс 0.1. Все такие данные находятся в `chipper_players` JSON schemaVersion=1. После уже выполненного deployV2 новые игроки имеют schemaVersion=2; их прогресс сохраняется. Таблицы, настройки Telegram, конфигурация/секреты и сторонние ресурсы не удаляются.
 
-Проверенная CLI 0.2.0 не имеет SQL-команды. `tgcloud run` исполняет локальный endpoint на Serverless без публикации. `scripts/reset-game-v0.2.mjs` временно создаёт такой локальный endpoint, проверяет `api.getMe()` (ID 8924974998, username chipperhatcherybot), sqlite_master, точные столбцы, отсутствие неизвестных Chipper-таблиц, внешних ключей и опасных triggers. В режиме dry-run делает только чтение. Temporary endpoint удаляется в finally; release gate запрещает его публикацию.
+Фактический Serverless отказал прежнему helper на первом SELECT sqlite_master с `Failed to prepare query [23] not authorized`, до SQL-записей. Catalog/PRAGMA/runtime CREATE TABLE/CREATE TRIGGER в recovery не используются. `chipper_release_operations` объявлена в `tgcloud/schema.js` и создаётся только supported schema-only push + migrate --safe: ровно ожидаемая safe-addition и финальный dry-run No schema changes. При warnings/manual/неизвестных операциях — остановка.
 
-До публикации выполняется `--prepare`: создаёт/валидирует только служебную таблицу `chipper_release_operations` и точный AFTER INSERT trigger, без INSERT marker и без удаления игроков. Отказ capability останавливает выпуск до замены действующей игры. Затем push V2 и `--apply`: единственный INSERT release_key='chipper-v0.2-clean-start' атомарно записывает marker и вызывает `DELETE FROM chipper_players`. `ON CONFLICT DO NOTHING` не вызывает AFTER INSERT повторно. После успеха temporary trigger удаляется, marker остаётся. Конкурентный повтор и потеря ответа после commit не удаляют новые аккаунты. Сброс не вызывается из bootstrap, handler, deployment hook или migrate.
+Administrative helper остаётся вне gameplay. Через temporary local endpoint `tgcloud run` он проверяет api.getMe (ID 8924974998, username chipperhatcherybot, is_bot), JSON functions и прямые именованные столбцы `telegram_id/revision/state_json`. Возвращает counts, не state_json/Telegram IDs. Malformed JSON, неизвестная/нецелочисленная schemaVersion, несовпадение player.telegramId/SQL ID, некорректные ID/revision и неподдерживаемый SQL блокируют prepare/apply. Фактическую структуру и ожидаемые schema additions проверяет штатный CLI migration inspector, а не запрещённые каталоги SDK.
 
-Если фактическая схема или разрешение raw SQL на платформе не подтверждены, destructive-операция блокируется. Реальный статус доступа и сброса записывается отдельно от local SQLite тестов.
+- `--diagnose` read-only: getMe, JSON-capability и aggregate counts; `receiptTableReady:false` допустимо до миграции.
+- `--dry-run` read-only: receipt table уже обязательна, countsV1/V2, fixed release receipt.
+- `--prepare`: INSERT ON CONFLICT DO NOTHING записывает фиксированный план `chipper-v0.2-clean-start` со status='prepared' (pending операция), source_sha, planned_legacy_players/remaining_legacy_players и identity. Игроков не изменяет.
+- `--apply`: требует prepared receipt; одним атомарным DELETE удаляет только целочисленную JSON schemaVersion=1 с EXISTS guard на этот prepared release/identity. После подтверждения legacy count0 отдельный conditional UPDATE/CAS переводит receipt в completed.
+
+`DELETE` и metadata completion **не являются одной транзакцией**. При потере ответа после DELETE pending план остаётся, повтор удаляет только V1 с нулевым новым эффектом и завершает metadata. Ни один V2 профиль не подходит под DELETE. Completed receipt запрещает дальнейшую запись/очистку; появление V1 после completion возвращает blockedCode RESET_LEGACY_AFTER_COMPLETION без новой очистки.
+
+Безопасность этой модели требует исключительно V2 writers после подготовки; возврат runtime 0.1 после status='prepared' запрещён. Ordinary gameplay/будущие deploy не вызывают helper. Wrapper prepare/apply дополнительно требует clean worktree и точный in-sync ответ pinned CLI0.2.0 от `migrate --local --dry-run`; неизвестный output/план блокирует изменение данных даже при exit0. Temporary endpoint удаляется в finally и никогда не публикуется.
+
+Данные receipt: release_key, status(prepared/completed), prepared_at, completed_at, planned_legacy_players, remaining_legacy_players, app_id, bot_username, source_sha. Planned count — зафиксированный план, не выдуманное число фактически удалённых rows. Никаких deleted_players из прежнего trigger design.
 
 ## 4. Telegram viewport, вертикальные свайпы и shell
 
@@ -152,22 +161,20 @@ finishFlapsRun({ operationId, runId, score, endReason }) =>
 
 **Владелец прямо разрешил** Codex публиковать новую 0.2 в действующий `@chipperhatcherybot` без отдельного подтверждения каждого штатного шага: в проекте сейчас бета, публичной аудитории не заявлено. Владелец дополнительно разрешил один адресный reset chipper_players при переходе на 0.2. Он не разрешал удаление системных ресурсов/секретов, непроверенные destructive migrations, force push, платежи или изменения других ботов.
 
-### Порядок
+### Порядок recovery после опубликованной revision 2
 
-1. Ветка `feature/chipper-v0.2` от актуального `main`; сначала read-only repo status/head.
-2. Реализовать и провести локальные тесты. До первого live deploy зафиксировать исходный `main` SHA, baseline serverless revision, конфигурацию и обратимый артефакт из предыдущей рабочей сборки.
-3. Перед cloud write проверить, что авторизация CLI относится к `@chipperhatcherybot` и тому же bot app ID **8924974998**. Проверять без раскрытия токенов; `tgcloud fetch/status/diff`.
-4. Обнаружить неизвестные изменения в облаке. Если cloud revision отличается от ожиданий — fetch/сравнить, **не применять `--force`**.
-5. `npm ci` → typecheck/lint/unit/integration/ui/perf smoke → production build → анализ файлов и diff модулей. Убедиться, что удаление старой minigame UI не приведёт к непреднамеренному удалению runtime endpoint.
-6. Если необходимо изменить схему таблиц: сначала `npx tgcloud migrate --dry-run`, затем только подтверждённые `--safe` изменения, в порядке совместимого rollout. Предпочтительно **обойтись без SQL schema migration**, расширив существующий JSON.
-7. `npx tgcloud push` (только после успешных проверок); `npx tgcloud migrate --safe` **только если** реально есть согласованные safe schema changes. Для power-user proxy следовать `DOCS/DEPLOYMENT_0.1.md`; без `tgcloud reset` и `push --force`. Затем `node scripts/reset-game-v0.2.mjs --apply` ровно один раз; обычные деплои helper не вызывают.
-8. Проверить `status`, HTTP URL, отсутствие mock в production, BotFather Main Mini App/Menu Button, отсутствие 401 при *валидном* запуске владельцем — но никогда не симулировать реальные подписи чужих Telegram ID.
-9. Указать точное время деплоя, source SHA, cloud revision, фактически выполненные тесты, список manual A/B/C проверок и процедуру отката.
-10. Если live deploy блокируется отсутствием токена/сетью/неконтролируемым diff/опасной миграцией, **не маскировать блокер**; создать PR и инструкции, а не имитировать публикацию.
+1. Получить точный recovery SHA существующего PR#2, проверить clean worktree и tests. Не создавать новый PR/merge.
+2. Только read-only `--diagnose`: точный getMe, direct-column/JSON capability, valid ownership/version, countsV1/V2; до миграции missing receipt table допустима.
+3. `fetch/status/diff`, затем `migrate --local --dry-run`: допускается ровно ожидаемая новая `chipper_release_operations`, без удаления/изменения gameplay/сторонних объектов.
+4. Schema-only `push tgcloud/schema.js`; отдельно deployed `migrate --dry-run`, ожидаемый plan, `migrate --safe`; затем повторный dry-run обязательно No schema changes. Exit0 safe не подтверждает применение warning/manual changes.
+5. `--dry-run → --prepare → --apply → --dry-run`: fixed prepared receipt, legacy-only DELETE, completed metadata CAS, ноль V1 и сохранённые V2. Wrapper prepare/apply дополнительно проверяет CLI schema in-sync.
+6. `fetch/status`, точные source/cloud revision/URL/receipt/counts, затем signed acceptance A(бывший V1)/B(уже V2)/C(новый), A1/A2. Результаты pending до фактического выполнения.
 
-### Откат
+Каждая фаза проверяется до следующей. Не передавать весь изменяющий runbook одним многострочным paste: newline shell не останавливается при ошибке. Для допустимых последовательностей использовать &&; никаких force/--yes/destructive fallback. При неподдерживаемом JSON/DML/schema — технический blocker, не симуляция успешного reset.
 
-При регрессии публикуется проверенный исправленный V2 код или предшествующий совместимый V2 checkpoint. Код 0.1 не является совместимым rollback после clean start: он не знает новые птицы/Flaps и не возвращает удалённый прогресс. Release marker и новые данные не удаляются. Если полноценный rollback требует несовместимого кода, готовится fix-forward либо временно закрывается доступ через настройки Mini App; повторный reset запрещён.
+### Восстановление кода
+
+После prepared/completed только проверенный V2 checkpoint/fix-forward; runtime 0.1 вновь создавал бы V1 и нарушил fence. Receipt и новую игру не удалять. До prepared возможный rollback тоже требует отдельной оценки уже созданных V2, исходный 0.1 не считается автоматически совместимым. Исходные 0.1 документы остаются историческими.
 
 ## 10. Definition of Done технического слоя
 

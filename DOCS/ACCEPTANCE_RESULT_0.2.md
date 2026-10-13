@@ -1,78 +1,91 @@
-# Chipper 0.2 — фактическая приёмка
+# Chipper 0.2 — фактическая приёмка и восстановление reset
 
-**Статус: код 0.2 готов к приёмке; живой выпуск НЕ завершён.** Публикация и однократный сброс BLOCKED: в этой среде нет привязки Telegram Serverless CLI к боту и CLI-токена. Действующий бот не изменён. Дополнительное разрешение владельца не требуется — отсутствует технический доступ.
+**Статус: beta 0.2 опубликована владельцем; однократный reset НЕ завершён.** Рабочий код/сайт подтверждены логом Termux. Старый helper столкнулся с запретом SDK catalog SQL; исправляется административная процедура, игровые модули V2 остаются опубликованными. Дополнительное разрешение на штатные recovery шаги не требуется; неподдерживаемые SQL/DML остаются техническим блокером.
 
 | Поле | Фактическое значение |
 |---|---|
-| Ветка | feature/chipper-v0.2 → main, merge не выполняется |
+| Ветка / PR | feature/chipper-v0.2 → main; [PR #2](https://github.com/tracerxbrhd/chipper-hatchery/pull/2) открыт, merge не выполнялся |
 | Начальный main | 95fd2d13abbdbc394932ec249472147e496afca9 |
-| Проверенный source checkpoint | 5ffea76c3d939c33779aab4d5522240c7480b7b5 |
-| PR | https://github.com/tracerxbrhd/chipper-hatchery/pull/2 — открыт, merge не выполнялся |
-| Runtime | Node v24.19.0, Chromium 153.0.8010.0, Playwright 1.64.0 |
-| Serverless CLI | @tgcloud/cli 0.2.0; это версия CLI, не cloud revision |
-| Bot/App | Ожидаются @chipperhatcherybot / 8924974998; live getMe не подтверждён |
-| Cloud revision 0.2 | BLOCKED — не получена |
-| URL 0.2 | Не подтверждён. Исторический URL 0.1: https://app8924974998.tgcloud.ai/ |
-| Фактический reset | НЕ выполнен; боевые игровые записи не удалялись |
+| Опубликованный владельцем source | **7fd2486d3233e6f560620017d00f478568cacb4d** |
+| Источник live evidence | Предоставленный владельцем лог Termux: успешный push, revision 2, URL и 161/161 PASS |
+| Cloud revision опубликованной beta | **2**; новая revision schema-only recovery пока не получена |
+| URL beta 0.2 | **https://app8924974998.tgcloud.ai/** |
+| Serverless CLI | @tgcloud/cli 0.2.0; версия CLI не является cloud revision |
+| Bot/App | @chipperhatcherybot / 8924974998; прежний helper прошёл getMe guard до первого SQL отказа |
+| Reset | **НЕ выполнен**; старые dry-run/prepare/apply завершились до SQL-записей |
+| Recovery checkpoint | Точный immutable SHA исправления — в последнем recovery commit [PR #2](https://github.com/tracerxbrhd/chipper-hatchery/pull/2/commits); его передаёт финальный отчёт. Self-reference SHA внутри того же commit не используется |
+| Live recovery | Read-only diagnosis, миграция receipt table и version-fenced DML пока не подтверждены |
 
-## Финальные автоматизированные проверки
+## Подтверждённые проверки checkpoint 7fd2486…
 
-| Команда / область | Результат |
+Эти числа относятся к опубликованному checkpoint и не заменяют новый прогон recovery:
+
+| Команда / область | Evidence checkpoint |
 |---|---|
-| npm ci | PASS; зависимости из исходного lockfile, изменена только версия самого проекта |
-| npm run check | PASS: TypeScript, runtime syntax/imports, ESLint, Vitest, Vite build, production isolation, secret/history patterns |
-| npm test | 161/161 PASS, 11 файлов |
-| GitHub Actions | Итог последнего HEAD — в [PR Checks](https://github.com/tracerxbrhd/chipper-hatchery/pull/2/checks). Первый прогон прошёл check и 32/33 UI; изолированный тестовый WebApp заменялся загруженным внешним SDK. Harness исправлен; 10/10 целевых повторов PASS, runtime не менялся |
-| Backend / CAS / экономика | 79 тестов: onboarding, V2 hatch, ownership, двойные операции, потерянные ответы, награды, 20ч, 2с, TTL, отказ старого протокола |
-| Reset / prepare SQLite | 20 тестов: подготовка без DELETE, повтор/конкуренция/lost response/rollback, чужой бот/схема/таблицы/triggers/FK, новая игра прежних аккаунтов |
-| Chick geometry | 12 тестов: 720 комбинаций anchors, реальные контуры глаз, 180 крайних вариантов feed/preen, 90 возрастных форм и 13 поз |
-| World / Flaps / Telegram / client | 22 + 15 + 9 + 4 теста PASS |
-| CHIPPER_CHROMIUM_PATH=/tmp/chipper-browser/chromium npm run test:ui | 33/33 PASS, 39,1с; запуск оркестратором после исправления CI harness, без изменения tracked артефактов |
-| git diff --check / документы 0.1 | PASS; исторические спецификации/отчёты и screenshots 0.1 не изменены |
-| Production bundle | index-kzwIfClV.js 316,00KB / 102,65KB gzip; CSS 39,73KB. Нет dev backend, каталога, synthetic identities и credential values |
+| npm ci / npm run check | PASS предыдущего quality gate; Termux владельца: 161/161 unit tests PASS |
+| Unit tests | Исторический checkpoint: 161/161, 11 файлов; включая 20 тестов прежнего SQLite-trigger helper |
+| Backend / CAS / экономика | Checkpoint:79 тестов — onboarding/V2 hatch/ownership/replay/награды/cooldown/TTL/отказ старого протокола |
+| Chick geometry | Checkpoint:12 тестов —720 anchors combinations, eye contours,180 feed/preen extremes,90 age variants/13poses |
+| World / Flaps / Telegram / client | Checkpoint:22+15+9+4 PASS |
+| UI browser/synthetic bridge | Последний checkpoint:33/33 PASS,39,1 с; не является signed live Telegram приёмкой |
+| GitHub Actions | Фактический итог исправления — [PR Checks](https://github.com/tracerxbrhd/chipper-hatchery/pull/2/checks); не приписывать старый CI PASS новому SHA |
+| Production isolation | Предыдущая сборка без dev adapter/gallery/synthetic identities/секретов; recovery не меняет frontend |
+| Исторические 0.1 | Не изменены спецификации/отчёты и screenshots0.1 |
 
-Стандартный CDN Chromium в этой среде вернул неполный архив. Использован локальный Chromium 153 из временного npm-runtime, без изменения зависимостей проекта. В обычной среде доступен штатный `npx playwright install chromium`; опциональный CHIPPER_CHROMIUM_PATH нужен только для явного собственного executable.
+Оригинальные 20 SQLite reset тестов доказывали локальный механизм trigger, но **не** разрешение выполнять catalog SQL/DDL на Serverless. Они относятся к историческому checkpoint. Новый recovery final gate оркестратора: **npm run check PASS, 184/184 tests, 12 файлов** (141 прежних non-reset + 33 новых reset + 10 CLI-wrapper). TypeScript/runtime syntax/imports, lint, build, production isolation и secret/history checks PASS. Frontend asset hashes не изменились; игровой/UI runtime не менялся, предыдущий 33/33 UI checkpoint сохраняет свой статус без утверждения о новом live UI прогоне.
 
-Browser tests работают с явными локальными fixtures и synthetic Serverless callback bridge. Они не подтверждают подпись настоящего Telegram initData или приёмку нескольких живых аккаунтов.
+Для прежнего UI gate использован временный Chromium153 без изменения production dependencies; штатный путь — `npx playwright install chromium`, опционально собственный CHIPPER_CHROMIUM_PATH. Browser fixtures и административный CLI ctx не подтверждают подпись настоящего Telegram initData/несколько живых аккаунтов.
 
-## Покрытие критериев
+## Причина отказа и что не было удалено
 
-| Область | Автоматизированная проверка | Реальная приёмка |
-|---|---|---|
-| UI / Liquid Glass | Пять вкладок, центральный Дом, фиксированный root, внутренний scroll 40 птиц, возврат scroll, rapid navigation, keyboard-height, dark/light/reduced-motion/fallback | PENDING owner: реальные системная шапка/свайпы/клавиатура/safe areas Android/iOS |
-| Chick V2 | Новая геометрия, гены сервера, три возраста, shapes/palettes/patterns, нейтральный V2 fallback, одинаковый renderer в мире/полёте | Визуальная оценка владельца; legacy renderer удалён |
-| Living World | Tap arrival, опорная походка/тень/глубина, кормление/игра/сон/preen/grow, крайние формы у четырёх границ, hidden/deactivated/unmount | PENDING owner: ощущение движения и физический WebView |
-| Chippster Flaps | Ready/input/collision/result/restart, deterministic 30/60/120 timing, 5000 проёмов, 30 полётов по 40 ворот на максимальной сложности, TTL/pause/leave, captured chick, record/reward/retry | PENDING owner: касание/звук/вибрация/FPS на телефоне |
-| Изоляция / сохранения | Три синтетических Telegram ID, два клиента, CAS/replay, поздний ответ старого аккаунта, отключённые haptics после background refresh | PENDING owner: подписанные A/B/C и A1/A2 |
-| Однократный сброс | Prepare не очищает данные; атомарный marker+DELETE; повтор не удаляет новые V2 аккаунты; после reset новое яйцо/onboarding/нулевой баланс | BLOCKED: фактический Serverless getMe/schema/prepare/apply не выполнены |
-| Публикация | Production сборка и exclusion PASS | BLOCKED: нет cloud identity/revision/diff/push; старый HTTP URL не является beta 0.2 |
+Во всех показанных старых вызовах первая SQL-команда `SELECT ... FROM sqlite_master` получила:
 
-## Визуальные артефакты и perf
+`Failed to prepare query [23] not authorized`.
 
-`DOCS/qa/0.2/`: Home light и dark 320/360/390/430; Collection; Incubator; Profile; Flaps ready/playing/paused/result/cooldown; 30 персонажей × 3 возраста в двух темах; крайние walk/feed/preen/sleep/flap/turn/front; самый крупный взрослый у границ сцены.
+По порядку выполнения кода 7fd2486… это произошло после getMe identity guard, **до CREATE TABLE/CREATE TRIGGER/INSERT/DELETE**. Вывод о нулевых удалениях основан на этой трассе и проверенном порядке кода; aggregate counts старой БД таким отказом не измерены. Ошибка не означает, что безопасно выполнять последующие команды: shell с обычными переносами строк продолжал старые вызовы после неуспешного шага.
 
-30-секундный smoke записан в `perf-smoke.json`: проверяются стабильное число DOM-узлов, кадры и long tasks. Это наблюдение локального headless Chromium, а не гарантия FPS любого Android/iOS. Полные screenshots визуально просмотрены; исправлены поглощение тапов прозрачной SVG-областью, обрезание крайних форм, выход глаз за контур и уход головы под поверхность в preen.
+V2 опубликована в cloud revision 2. Старые schemaVersion=1 до успешной очистки получают RESET_REQUIRED. Новые V2 игроки, которые могли появиться после публикации, сохраняются новой recovery-процедурой.
 
-## Выпуск и приёмка владельца
+## Исправленная процедура и текущие статусы
 
-Точная процедура: [DEPLOYMENT_0.2.md](DEPLOYMENT_0.2.md). Доступ восстанавливается штатным интерактивным `npx tgcloud login` в этом checkout. Затем: fetch/status/diff → reset dry-run → prepare без очистки → штатный push → apply единственного сброса → повторный dry-run. Идентичность проверяется живым api.getMe, таблица — sqlite_master/PRAGMA. Неподтверждённый механизм не заменяется выдуманной SQL-командой.
+| Область | Текущий статус / ожидаемое подтверждение |
+|---|---|
+| Старый catalog/PRAGMA/runtime DDL | Исключаются из recovery helper; не использовать fallback через запрещённые системные таблицы |
+| --diagnose | PENDING live: read-only getMe, известные столбцы/aggregate counts, JSON capability и receiptTableReady; до миграции false допустимо |
+| Schema-only push + migrate | PENDING live: только новая объявленная chipper_release_operations; --safe применяется после проверенного plan, последний dry-run обязан No schema changes |
+| --dry-run | PENDING live: receipt table уже обязательна, valid known JSON/schema/ownership, countsV1/V2 и фиксированный receipt |
+| --prepare | PENDING live; automated PASS:status='prepared' (pending план) key/source SHA/planned_legacy_players, schema guard exact CLI output/empty stderr, без изменения игроков |
+| --apply | PENDING live: один atomic DELETE только schemaVersion=1 под guard на status='prepared'; отдельно completed metadata CAS после нуля legacy |
+| Recovery automated tests | PASS:33 actual SQLite reset tests с запрещёнными catalog/PRAGMA/DDL и разрешённым DML + 10 CLI-wrapper tests; полный gate 184/184,12 файлов |
+| Replay / resume | PASS отдельных SQLite tests; live DML PENDING. Immutable version fence сохраняет V2 при lost response, concurrent calls и незавершённом completion |
+| Подтверждение reset | PENDING live: completed receipt, legacy count0, сохранённые V2, post-run cloud fetch/status |
+| Реальные A/B/C/A1/A2 и Android/iOS | PENDING owner |
 
-После подтверждённого apply:
-1. Старый A закрывает/переоткрывает Mini App: новое onboarding, новое стартовое яйцо, нулевой баланс/рекорд, новая V2 птица.
-2. B/C независимо проходят то же; имена/коллекции/балансы изолированы.
-3. A1/A2 одновременно повторяют hatch/care/finish: одно яйцо/птица/начисление; чужие chickId/runId отклоняются.
-4. Повторный запуск A сохраняет уже новый прогресс; повторного стартового подарка нет.
-5. Дом: тап по поляне, лапы/поворот, корм/игра/сон; Collection/Profile scroll и rename с клавиатурой.
-6. Flaps: выбранный цыплёнок, полёт/столкновение/результат/повтор/рекорд; +1 после ≥2с server time, следующий бонус через 20ч; пауза/background/выход.
-7. Темы/reduced-motion/звук/haptics; Android и по доступности iOS/Desktop. Все живые пункты остаются PENDING до выполнения владельцем.
+**DELETE и completion receipt не коммитятся одной транзакцией.** Новый дизайн использует один атомарный legacy-only DELETE и отдельный pending/completed metadata CAS. Ровно один эффект очистки обеспечивается фиксированной границей schemaVersion=1 и отсутствием писателей V1. Повтор после потери ответа может снова исполнить SQL, но уже не удалит никакой новый V2 профиль. После pending запрещено возвращать runtime 0.1 или очищать/переписывать receipt вручную.
 
-## Ограничения и восстановление
+Точный staged runbook: [DEPLOYMENT_0.2.md](DEPLOYMENT_0.2.md). Сейчас владельцу передаётся **только read-only --diagnose**. Следующие фазы выполняются после разбора его результата, без force/--yes и без destructive fallback.
 
-- CLI доступ отсутствует; reset и публикация 0.2 не состоялись.
-- Личный Flaps score имеет sanity bounds, но не полноценный античит; глобального рейтинга нет.
-- Постоянные receipts обеспечивают replay safety, агрегат со временем растёт; compaction требует отдельного решения.
-- Физические Telegram-клиенты и несколько реальных аккаунтов пока не проверены.
-- Экспорт PNG-карточки/share из необязательного P1 не реализован.
-- До фактического reset возможно вернуть исходный рабочий 0.1 SHA 95fd2d13abbdbc394932ec249472147e496afca9. После reset — только совместимый V2 checkpoint/fix-forward, без повторного удаления данных или release marker.
+## Игровые критерии и визуальные evidence
 
-Работали настоящие субагенты UI, Art, Living World, Flaps, Backend, Release/QA и независимый integration reviewer. Оркестратор согласовал контракт, интегрировал приложение, выполнил финальные quality gates и подготовил Git-сдачу.
+На предыдущем automated checkpoint проверены пять вкладок/центральныйДом/fixed root/40birds internal scroll/keyboard height/темы/reduced motion; новая V2 morphology и неизменные genes; grounded walk/care/sleep/hidden lifecycle; Flaps pointer/physics/collision/results/restart/record/reward/retry/TTL/pause/leave; CAS и старые аккаунтные ответы.
+
+`DOCS/qa/0.2`: Home light/dark320/360/390/430, Collection/Incubator/Profile, Flaps ready/playing/paused/result/cooldown,30originalbirds×3ages, extreme poses/bounds. `perf-smoke.json` —30 сек local headless smoke стабильности DOM/longtasks, не гарантия FPS физического WebView. Обычные tests пишут новую evidence в игнорируемый test-results/qa; намеренное каноническое обновление до commit — CHIPPER_CAPTURE_QA=1.
+
+## Приёмка после подтверждённого recovery
+
+1. A со старым V1 прогрессом переоткрывает Mini App: первоначальное onboarding, новое яйцо, нулевой прежний баланс/рекорд, новая V2 птица.
+2. B, если уже создан на опубликованной V2: его новые имя/питомец/ресурсы/рекорд сохранены после очистки V1.
+3. C новый: независимый профиль; повторный вход не выдаёт второй starter.
+4. A1/A2 одновременно повторяют hatch/care/finish: один результат/награда, ownership отказ на чужие IDs.
+5. Android Home/навигация/scroll/keyboard, grounded movement/care/sleep; Flaps выбранный chick/input/collision/restart/record/cooldown/pause/background; темы/звук/haptics и по доступностиiOS/Desktop.
+
+Каждый live пункт отмечается PASS только после реального выполнения. Deploy log и unit tests не заменяют эту приёмку.
+
+## Практические пределы
+
+- Beta 0.2 опубликована, но clean-start transition пока не завершён. Новый live DML и receipt migration не подтверждены.
+- После pending/completed только V2 checkpoint/fix-forward; runtime 0.1 нарушит version fence. До pending возможный откат также требует оценки уже существующих V2 профилей.
+- ScoreFlaps casual с plausibility bounds, без полноценного античита/публичного рейтинга; durable receipts требуют future safe compaction.
+- PNG share из необязательногоP1 не реализован; реальные Telegram жесты и multi-account acceptance PENDING.
+
+Настоящие субагенты UI, Art, World, Flaps, Backend, Release/QA и integration reviewer выполнили initial implementation. Recovery выделена отдельно: schema/DML design, CLI/Termux audit и документация; игровой runtime не заменяется ради обхода доступа к системному каталогу.

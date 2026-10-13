@@ -19,4 +19,8 @@ async function check(directory) {
   }
 }
 await check(resolve('tgcloud'));
+try {
+  await readFile(resolve('tgcloud/endpoints/chipperV02ResetTemporary.js'));
+  throw new Error('Temporary administrative reset endpoint must never be deployed');
+} catch (error) { if (error.code !== 'ENOENT') throw error; }
 console.log('Serverless modules: syntax and runtime imports PASS');

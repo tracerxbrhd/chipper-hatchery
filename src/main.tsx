@@ -33,4 +33,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
     return this.props.children;
   }
 }
-createRoot(document.getElementById('root')!).render(<StrictMode><ErrorBoundary><IdentityBoundary /></ErrorBoundary></StrictMode>);
+const root = createRoot(document.getElementById('root')!);
+if (import.meta.env.DEV && new URLSearchParams(location.search).get('art') === '1') {
+  void import('./chicks/ChickGallery').then(({ default: ChickGallery }) => root.render(<StrictMode><ChickGallery /></StrictMode>));
+} else root.render(<StrictMode><ErrorBoundary><IdentityBoundary /></ErrorBoundary></StrictMode>);

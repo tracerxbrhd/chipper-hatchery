@@ -17,11 +17,11 @@ describe('actual local SQLite aggregate CAS under interleaved requests', () => {
     const r = await f.call('getIncubator'); expect(r.state.player.feathers).toBe(6); expect(r.state.egg.kind).toBe('ordinary');
   });
   it('C02 ten identical finish rewards commit once; fresh operation keys cannot reward twice', async () => {
-    const f = fixture(); await f.initial(); const s = await f.call('startMiniGame', operation()); f.advance(25000);
-    const finish = operation({ attemptId: s.result.attemptId, score: 8 });
-    const results = await Promise.all(Array.from({ length: 10 }, () => f.call('finishMiniGame', finish))); expect(results.every(r => r.ok && r.result.rewarded)).toBe(true);
-    await Promise.all(Array.from({ length: 10 }, () => f.call('finishMiniGame', operation({ attemptId: s.result.attemptId, score: 8 }))));
-    const r = await f.call('getHome'); expect(r.state.player.feathers).toBe(1); expect((await f.store.read('101')).state.telemetry.totals.minigame_finished).toBe(1);
+    const f = fixture(); await f.initial(); const s = await f.call('startFlapsRun', operation()); f.advance(25000);
+    const finish = operation({ runId: s.result.runId, score: 8, endReason: 'crash' });
+    const results = await Promise.all(Array.from({ length: 10 }, () => f.call('finishFlapsRun', finish))); expect(results.every(r => r.ok && r.result.rewarded)).toBe(true);
+    await Promise.all(Array.from({ length: 10 }, () => f.call('finishFlapsRun', operation({ runId: s.result.runId, score: 8, endReason: 'crash' }))));
+    const r = await f.call('getHome'); expect(r.state.player.feathers).toBe(1); expect((await f.store.read('101')).state.telemetry.totals.flaps_finished).toBe(1);
   });
   it('C05/C12 lost response after successful purchase recovers using the same receipt', async () => {
     const f = fixture(); await f.initial(); await f.seedFeathers(12); const request = operation(); f.loseNextResponse();

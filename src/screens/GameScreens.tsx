@@ -1,66 +1,61 @@
-import { useEffect, useRef, useState } from 'react';
 import type { Chick, Snapshot } from '../types';
 import { ChickArt } from '../components/ChickArt';
-import { duration, ru } from '../i18n';
+import { duration } from '../i18n';
 import { Icon, isSleeping, rewardReadyAt, type ViewProps } from './Elements';
+import '../games/flaps/flaps.css';
+export { FlapsGame } from '../games/flaps/FlapsGame';
+export { requestFlapsLeave } from '../games/flaps/input';
 
-export interface GameAttempt { attemptId: string; durationMs: number; expiresAt: number }
-export interface GameResult { score: number; rewarded: boolean }
+export interface GameAttempt {
+  runId: string;
+  chickId: string;
+  startedAt: number;
+  expiresAt: number;
+  configVersion: string;
+  chick: Chick;
+}
+export interface GameResult {
+  score: number;
+  bestScore: number;
+  previousBest: number;
+  newBest: boolean;
+  rewarded: boolean;
+  rewardNextAt: number | null;
+  reason: 'rewarded' | 'cooldown' | 'too_short';
+}
 
 export function Activities({ state, now, busy, reducedMotion, onStart }: ViewProps & { state: Snapshot; onStart: () => void }) {
   const chick = state.chicks.find(item => item.id === state.player.activeChickId);
   const rewardIn = rewardReadyAt(state.player.miniGameRewardAt) - now;
-  return <section className="activities-screen"><p className="eyebrow">{ru.activities}</p><h1>{ru.activitiesTitle}</h1><article className="game-invite"><div className="game-invite-art">{chick && <ChickArt appearanceId={chick.appearanceId} stage={chick.stage} state={isSleeping(chick, now) ? 'sleep' : 'feed'} reducedMotion={reducedMotion} size={210} />}<span className="decor-grain grain-one" /><span className="decor-grain grain-two" /><span className="decor-grain grain-three" /></div><span className="game-duration">25 {ru.seconds}</span><h2>{ru.gameTitle}</h2><p>{ru.gameBody}</p><button className="button primary" disabled={busy} onClick={onStart}>{busy ? ru.waiting : ru.gameStart}</button></article><section className="quiet-card reward-note"><Icon name="feather" /><div><h2>{rewardIn > 0 ? `${ru.gameRewardAfter} ${duration(rewardIn)}` : ru.gameRewardAvailable}</h2><p>{ru.gameRepeatHint}</p></div></section>{chick && isSleeping(chick, now) && <p className="screen-footnote">{ru.gameSleepHint}</p>}</section>;
+  const bestScore = state.player.flaps?.bestScore ?? 0;
+  return <section className="activities-screen flaps-activities">
+    <p className="eyebrow">Активности</p><h1>Расправим крылья</h1><p className="intro">Небольшое приключение с вашим цыплёнком.</p>
+    <article className="flaps-invite">
+      <div className="flaps-invite-art" aria-hidden="true"><i className="flaps-invite-gate gate-top" /><i className="flaps-invite-gate gate-bottom" />
+        {chick && <ChickArt chick={chick} animate={!reducedMotion} pose="flap" direction="right" shadow={false} />}
+        <span className="flaps-invite-air air-one" /><span className="flaps-invite-air air-two" />
+      </div>
+      <span className="flaps-tag">ТАП — ВЗМАХ</span><h2>Chippster Flaps</h2><p>Пролетайте через проёмы, собирайте очки и побейте свой рекорд.</p>
+      <div className="flaps-invite-best"><Icon name="play" /><span>Личный рекорд</span><strong>{bestScore}</strong></div>
+      <button className="button primary" disabled={busy || !chick} onClick={onStart}>{busy ? 'Готовим полёт…' : 'Играть'}</button>
+    </article>
+    <section className="quiet-card reward-note"><Icon name="feather" /><div><h2>{rewardIn > 0 ? `Пёрышко через ${duration(rewardIn)}` : '+1 пёрышко за завершённый полёт'}</h2><p>Награда раз в 20 часов. Играть и улучшать рекорд можно в любое время.</p></div></section>
+    {chick && isSleeping(chick, now) && <p className="screen-footnote">Пока цыплёнок отдыхает дома, здесь можно полетать в его компании.</p>}
+  </section>;
 }
 
-interface Grain { id: number; x: number; y: number; turn: number }
-let grainSequence = 0;
-function makeGrain(): Grain {
-  return { id: ++grainSequence, x: 7 + Math.random() * 74, y: 9 + Math.random() * 69, turn: -30 + Math.random() * 60 };
-}
-
-export function GrainGame({ attempt, chick, busy, reducedMotion, onComplete, onGrain, onLeave }: { attempt: GameAttempt; chick: Chick | undefined; busy: boolean; reducedMotion: boolean; onComplete: (score: number) => void; onGrain: () => void; onLeave: () => void }) {
-  const [deadline] = useState(() => performance.now() + attempt.durationMs);
-  const [remaining, setRemaining] = useState(attempt.durationMs);
-  const [grains, setGrains] = useState<Grain[]>(() => Array.from({ length: 5 }, makeGrain));
-  const [score, setScore] = useState(0);
-  const [birdX, setBirdX] = useState(50);
-  const scoreRef = useRef(0);
-  const consumedGrains = useRef(new Set<number>());
-  const ended = useRef(false);
-  const completeRef = useRef(onComplete);
-  completeRef.current = onComplete;
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      const next = Math.max(0, deadline - performance.now());
-      setRemaining(next);
-      if (next === 0 && !ended.current) {
-        ended.current = true;
-        completeRef.current(scoreRef.current);
-      }
-    }, 100);
-    const spawn = window.setInterval(() => {
-      if (ended.current) return;
-      setGrains(old => [...old.slice(1), makeGrain()]);
-    }, 1600);
-    return () => { window.clearInterval(timer); window.clearInterval(spawn); };
-  }, [deadline]);
-  const collect = (grain: Grain) => {
-    if (ended.current || busy || performance.now() >= deadline || consumedGrains.current.has(grain.id)) return;
-    consumedGrains.current.add(grain.id);
-    setGrains(old => old.map(item => item.id === grain.id ? makeGrain() : item));
-    scoreRef.current = Math.min(500, scoreRef.current + 1);
-    setScore(scoreRef.current);
-    setBirdX(grain.x + 6);
-    onGrain();
-  };
-  return <section className="game-screen"><h1>{ru.gameTitle}</h1><div className="game-scoreboard"><div><span>{ru.score}</span><strong>{score}</strong></div><div className="game-timer" role="timer"><span>{ru.seconds}</span><strong>{Math.ceil(remaining / 1000)}</strong></div></div><div className="round-track" aria-hidden="true"><i style={{ width: `${(remaining / attempt.durationMs) * 100}%` }} /></div><div className="grain-field" aria-label={ru.gameTitle}>
-    {grains.map(grain => <button className="grain-target" key={grain.id} style={{ left: `${grain.x}%`, top: `${grain.y}%`, transform: `rotate(${grain.turn}deg)` }} aria-label={ru.grain} onClick={() => collect(grain)} disabled={busy || remaining <= 0}><span /></button>)}
-    {chick && <div className="game-bird" style={{ left: `${birdX}%` }}><ChickArt appearanceId={chick.appearanceId} stage={chick.stage} state={chick.sleepUntil !== null ? 'idle' : remaining <= 0 ? 'happy' : 'feed'} size={115} reducedMotion={reducedMotion} /></div>}
-    {remaining <= 0 && <div className="game-saving" role="status"><span className="spinner" />{ru.gameFinishing}</div>}
-  </div><p className="game-help">{ru.gameBody}</p><button className="button text-button" onClick={onLeave} disabled={busy}>{ru.gameLeave}</button></section>;
-}
-
-export function GameResultScreen({ result, chick, busy, reducedMotion, onAgain, onHome }: { result: GameResult; chick: Chick | undefined; busy: boolean; reducedMotion: boolean; onAgain: () => void; onHome: () => void }) {
-  return <section className="game-result"><span className="success-badge"><Icon name="check" /></span><h1>{ru.gameResultTitle}</h1>{chick && <div className="result-art"><ChickArt appearanceId={chick.appearanceId} stage={chick.stage} state={chick.sleepUntil !== null ? 'sleep' : 'happy'} size={250} reducedMotion={reducedMotion} /></div>}<strong className="result-score">{result.score}</strong><p className="intro">{ru.gameResultBody(result.score)}</p><p className={result.rewarded ? 'reward-pill' : 'reward-explanation'}>{result.rewarded && <Icon name="feather" />}{result.rewarded ? ru.gameRewarded : ru.gameNotRewarded}</p><button className="button primary" onClick={onAgain} disabled={busy}>{ru.playAgain}</button><button className="button text-button" onClick={onHome} disabled={busy}>{ru.goHome}</button></section>;
+export function GameResultScreen({ result, chick, busy, reducedMotion, now, onAgain, onHome }: ViewProps & { result: GameResult; chick: Chick | undefined; onAgain: () => void; onHome: () => void }) {
+  const rewardIn = (result.rewardNextAt ?? 0) - now;
+  const explanation = result.reason === 'too_short'
+    ? 'Полёт был короче 2 секунд. Попробуйте ещё — крылья уже размялись!'
+    : rewardIn > 0 ? `Следующее пёрышко через ${duration(rewardIn)}. А рекорд можно улучшить сейчас.` : 'Награда за этот полёт уже учтена.';
+  return <section className={`game-result flaps-result ${result.newBest && !reducedMotion ? 'flaps-record' : ''}`}>
+    <p className="eyebrow">Chippster Flaps</p><h1>{result.newBest ? 'Новый личный рекорд!' : 'Хороший полёт!'}</h1>
+    {chick && <div className="flaps-result-art"><ChickArt chick={chick} animate={!reducedMotion} pose={result.newBest ? 'play' : 'idle'} shadow /></div>}
+    <div className="flaps-result-stats"><div><span>Очки за полёт</span><strong className="result-score">{result.score}</strong></div><div><span>Личный рекорд</span><strong>{result.bestScore}</strong></div></div>
+    {result.rewarded ? <p className="reward-pill"><Icon name="feather" />+1 пёрышко в копилку</p> : <p className="reward-explanation">{explanation}</p>}
+    <button className="button primary" onClick={onAgain} disabled={busy}>{busy ? 'Готовим полёт…' : 'Ещё раз'}</button>
+    <button className="button text-button" onClick={onHome} disabled={busy}>Домой</button>
+    <p className="flaps-stat-note">Личная игровая статистика. Очки не влияют на награду.</p>
+  </section>;
 }

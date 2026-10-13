@@ -3,7 +3,7 @@ import { createGameService } from '../../tgcloud/lib/service.js';
 
 // This module is dynamically imported only in Vite DEV. It is never bundled for production.
 type Row = { revision: number; state: Record<string, unknown> };
-const storageKey = 'chipper-explicit-development-v1';
+const storageKey = 'chipper-explicit-development-v2';
 const store = {
   async read() { const raw = localStorage.getItem(storageKey); return raw ? JSON.parse(raw) as Row : null; },
   async create(_id: string, state: Record<string, unknown>) { if (!localStorage.getItem(storageKey)) localStorage.setItem(storageKey, JSON.stringify({ revision: 0, state })); },

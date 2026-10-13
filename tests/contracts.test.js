@@ -45,15 +45,17 @@ describe('verified context and ownership', () => {
 describe('minigame anti-abuse, economics and telemetry', () => {
   it('C09/C10 checks issued attempt ownership, duration and TTL', async () => {
     const f = fixture(); await f.initial(); await f.initial(202);
-    expect((await f.call('finishMiniGame', operation({ attemptId: 'fake', score: 2 }))).error.code).toBe('ATTEMPT_NOT_FOUND');
-    const started = await f.call('startMiniGame', operation()); const attemptId = started.result.attemptId;
-    expect((await f.call('finishMiniGame', operation({ attemptId, score: 2 }), 202)).error.code).toBe('ATTEMPT_NOT_FOUND');
-    expect((await f.call('finishMiniGame', operation({ attemptId, score: 2 }))).error.code).toBe('ATTEMPT_TOO_EARLY');
-    f.advance(BALANCE.miniGameAttemptTtlMs + 1); expect((await f.call('finishMiniGame', operation({ attemptId, score: 2 }))).error.code).toBe('ATTEMPT_EXPIRED');
+    expect((await f.call('finishFlapsRun', operation({ runId: 'fake', score: 2, endReason: 'crash' }))).error.code).toBe('ATTEMPT_NOT_FOUND');
+    const started = await f.call('startFlapsRun', operation()); const runId = started.result.runId;
+    expect((await f.call('finishFlapsRun', operation({ runId, score: 2, endReason: 'crash' }), 202)).error.code).toBe('ATTEMPT_NOT_FOUND');
+    const early = await f.call('finishFlapsRun', operation({ runId, score: 0, endReason: 'crash' }));
+    expect(early.ok).toBe(true); expect(early.result).toMatchObject({ rewarded: false, reason: 'too_short' });
+    const another = await f.call('startFlapsRun', operation());
+    f.advance(BALANCE.miniGameAttemptTtlMs + 1); expect((await f.call('finishFlapsRun', operation({ runId: another.result.runId, score: 0, endReason: 'crash' }))).error.code).toBe('ATTEMPT_EXPIRED');
   });
   it('U15 repeated rounds reward only once per rolling 20 hours and preserve sleep', async () => {
     const f = fixture(); const chickId = await f.initial(); const sleep = await f.call('careAction', operation({ chickId, action: 'sleep' }));
-    const round = async () => { const s = await f.call('startMiniGame', operation()); f.advance(25000); return f.call('finishMiniGame', operation({ attemptId: s.result.attemptId, score: 12 })); };
+    const round = async () => { const s = await f.call('startFlapsRun', operation()); f.advance(25000); return f.call('finishFlapsRun', operation({ runId: s.result.runId, score: 12, endReason: 'crash' })); };
     let r = await round(); expect(r.result.rewarded).toBe(true); expect(r.state.chicks[0].sleepUntil).toBe(sleep.state.chicks[0].sleepUntil);
     r = await round(); expect(r.result.rewarded).toBe(false); expect(r.state.player.feathers).toBe(1);
     f.advance(BALANCE.rewardCooldownMs); r = await round(); expect(r.result.rewarded).toBe(true); expect(r.state.player.feathers).toBe(2);

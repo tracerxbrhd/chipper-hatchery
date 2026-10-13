@@ -1,8 +1,8 @@
-# CHIPPER 0.2 — техническая архитектура, совместимость и деплой
+# CHIPPER 0.2 — техническая архитектура и восстановление clean start
 
 **Статус:** design contract для Codex; проверять на текущем checkout и версии SDK перед реализацией.  
 **Связанные документы:** `GDD_0.2.md`, `CHICK_SYSTEM_0.2.md`, `CHIPPSTER_FLAPS_0.2.md`, `ACCEPTANCE_0.2.md`.  
-**Исходный продакшен:** `@chipperhatcherybot`, Telegram Serverless, `https://app8924974998.tgcloud.ai/` — URL зафиксирован в отчёте 0.1, при публикации проверить фактический URL по CLI.
+**Опубликованная beta:** по логу владельца Termux source `7fd2486d3233e6f560620017d00f478568cacb4d`, cloud revision 2, `https://app8924974998.tgcloud.ai/`, `@chipperhatcherybot` / App ID 8924974998. Однократный reset пока не завершён; recovery получает отдельный source SHA.
 
 ## 1. Подтверждённая кодовая база на момент планирования
 
@@ -28,8 +28,7 @@ src/
   navigation/          # AppShell, BottomDock, TabTransition, viewport coordination
   design/              # tokens, GlassSurface, themes, motion
   chicks/
-    models.ts          # appearance v1/v2 types; visual contract
-    legacy/            # неизменная/совместимая отрисовка 12 старых птиц
+    models.ts          # explicit V2 genes; visual contract
     generator/         # shape registries, palette/pattern compatibility
     renderer/          # SVG bird, transform anchors, stage and pose
     animation/         # state machine, gait, micro-motion
@@ -44,8 +43,8 @@ src/
     useFlapsLoop.ts    # raf, pause, resume, input
   screens/             # адаптированные onboarding, incubator, collection, profile
 tgcloud/
-  endpoints/           # новые startFlapsRun/finishFlapsRun (+ старые для graceful compat)
-  lib/domain.js        # поддержка v1 и v2 chick, miniGameCooldown and flaps best
+  endpoints/           # startFlapsRun/finishFlapsRun; старые протоколы отказывают
+  lib/domain.js        # V2 chick, miniGameCooldown and flaps best
   lib/service.js       # existing CAS unchanged where possible
   lib/store.js         # existing SQL CAS unchanged
   schema.js            # старую таблицу не удалять
@@ -55,45 +54,46 @@ tests/
 
 Это ориентир; агент может выбрать другие имена, если сохраняются тестируемость и границы ответственности.
 
-## 3. Контракт модели данных и сохранение 0.1
+## 3. Модель V2 и однократный чистый старт
 
 ### 3.1 Source of truth
 
-В игре уже используется один атомарно обновляемый JSON-агрегат на `telegramId`. Это даёт безопасную единую транзакционную границу для птиц, яиц, наград и рекорда. Сохранять модель CAS (`UPDATE WHERE telegram_id AND revision = expected RETURNING revision`). Не переносить выдачу птиц/наград на клиент или непроверенные многозапросные транзакции.
+Один JSON-агрегат на verified `telegramId` хранится в `chipper_players(telegram_id,revision,state_json)`. Птицы, яйца, баланс, награды, рекорды и receipts коммитятся одним `UPDATE ... WHERE revision = expected RETURNING revision`. После конфликта CAS переход пересчитывается. Клиент не управляет валютой, случайностью, таймерами или владельцем.
 
-### 3.2 Внешность
+### 3.2 Новый персонаж
 
-Для каждой птицы:
-- **V1 (legacy)**: `appearanceId` — один из 12 имеющихся ID; отсутствие `appearanceVersion` трактуется как 1. Старый рендер должен оставаться доступным. Старые птицы не переролливаются и не пересоздаются.
-- **V2:** `appearanceVersion: 2`, `genes: { ...versioned fields... }`, `appearanceId`: legacy-compatible fallback ID того же `rarity` для старого клиента/временного rollback; детали V2 определяются genes. Уникальный неизменяемый chick.id сохраняется.
-- Выбор `rarity` по 70/25/5 и `genes` происходит сервером **один раз при hatch**. Результат хранится полностью, без зависимости от новой версии генератора при последующих просмотрах.
-- `Snapshot` 0.2 расширяется опциональными полями `appearanceVersion` и `genes` для птиц V2, остальные поля `Chick` остаются совместимыми.
-- Отдельный `geneSchemaVersion` (например, 1) для будущих изменений словаря форм. **Не хранить только seed:** он может интерпретироваться иначе после обновления генератора; закреплять конкретные значения.
-- Если данные genes неполные или неизвестные, корректный legacy fallback без краша всего приложения; ошибка логируется без персональных данных.
+Все вновь созданные птицы имеют `appearanceVersion: 2`, явные `genes` с `geneSchemaVersion: 1` и техническое имя палитры `appearanceId`. Полный набор морфологии и выбранных цветов сохраняется при hatch один раз. Вероятности косметической редкости 70/25/5. Возраст меняет пропорции; head/body/legs/wing/tail/beak/pattern остаются индивидуальными.
+
+Renderer 0.1 и визуальная совместимость старых обликов полностью исключены. Неизвестные genes нормализуются в безопасную оригинальную V2 форму. Серверное состояние и экономика не переопределяются этим клиентским fallback.
 
 ### 3.3 Flaps
 
-Использовать общий с 0.1 `player.miniGameRewardAt` для кулдауна `+1 пёрышко / 20ч`, **не обнулять его при замене мини-игры**.
+`player.flaps = { bestScore, completedRuns, lastPlayedAt }`. Одна незавершённая серверная попытка содержит kind='flaps', run ID, chickId и снимок внешности/стадии, startedAt, expiresAt, configVersion, finish result. Новый start отменяет предыдущий. `player.miniGameRewardAt` ограничивает +1 пёрышко раз в 20 часов. После первоначального release reset дальнейшие деплои сохраняют этот cooldown.
 
-Новые поля игрока в state JSON по умолчанию (lazy init при чтении):
-```ts
-player.flaps?: {
-  bestScore: number;          // личный, не подтверждённый античитом рекорд
-  completedRuns: number;      // завершённые попытки
-  lastPlayedAt: number | null;
-}
-```
-Серверные попытки (внутри `state.attempts` либо в отдельно версионированном агрегатном поле) включают: `kind: 'flaps'`, id, chickId на start, startedAt, expiresAt, finishedAt, cancelled и результат. Старые grain-attempts могут существовать до истечения TTL; не полагаться на их отсутствие. Историю длинных попыток хранить осмысленно, не накапливать вечно бессмысленные кадры.
+Рекорд клиентский, ограниченный проверками правдоподобия; не является доказательством честной игры. Score не влияет на выплату. TTL 10 минут, минимальное серверное время для выплаты 2 секунды, не более 6 starts/minute.
 
-Серверный `bestScore` не является доказанно честным результатом: браузер заявляет очки; применить plausibility bounds по серверному времени и настройкам препятствий, но не говорить, что это полноценный античит. Без глобальной таблицы рекордов и наград за лидерборд.
+### 3.4 Формат состояния
 
-### 3.4 Преобразования состояния
+Новый aggregate имеет `schemaVersion=2`. Старые schemaVersion=1 не мигрируются и не удаляются автоматически: запрос получает `RESET_REQUIRED` до разрешённой административной очистки. Повторный bootstrap после reset создаёт один новый профиль, нулевой баланс, onboarding='egg', бесплатное готовое стартовое яйцо и пустую коллекцию. Повторная выдача стартового подарка в дальнейшем невозможна.
 
-- В 0.2 поддерживать `schemaVersion=1` из 0.1; при первом обращении возможно **идемпотентное lazy upgrade** в памяти + CAS, не удаляя неизвестные поля.
-- Если вводится `schemaVersion=2`, тестировать повторную загрузку, upgrade при параллельных стартах и rollback старым серверным кодом. Откат не должен безвозвратно менять данные V2; при невозможности безопасного rollback — не вводить несовместимый schemaVersion в 0.2.
-- Старые ID/яйца/таймеры/пёрышки/кудауны/милстоуны/receipts остаются неизменными по смыслу.
-- Убедиться, что legacy-генерация при обновлении не меняет шанс редкости для уже созданных птиц.
-- Ни в каком окружении не выполнять массовый reset, truncate, drop, принудительный purge или пересоздание базы ради 0.2.
+### 3.5 Один логический reset с неизменяемой версионной границей
+
+В закрытой beta владелец разрешил очистить игровой прогресс 0.1. Все такие данные находятся в `chipper_players` JSON schemaVersion=1. После уже выполненного deployV2 новые игроки имеют schemaVersion=2; их прогресс сохраняется. Таблицы, настройки Telegram, конфигурация/секреты и сторонние ресурсы не удаляются.
+
+Фактический Serverless отказал прежнему helper на первом SELECT sqlite_master с `Failed to prepare query [23] not authorized`, до SQL-записей. Catalog/PRAGMA/runtime CREATE TABLE/CREATE TRIGGER в recovery не используются. `chipper_release_operations` объявлена в `tgcloud/schema.js` и создаётся только supported schema-only push + migrate --safe: ровно ожидаемая safe-addition и финальный dry-run No schema changes. При warnings/manual/неизвестных операциях — остановка.
+
+Administrative helper остаётся вне gameplay. Через temporary local endpoint `tgcloud run` он проверяет api.getMe (ID 8924974998, username chipperhatcherybot, is_bot), JSON functions и прямые именованные столбцы `telegram_id/revision/state_json`. Возвращает counts, не state_json/Telegram IDs. Malformed JSON, неизвестная/нецелочисленная schemaVersion, несовпадение player.telegramId/SQL ID, некорректные ID/revision и неподдерживаемый SQL блокируют prepare/apply. Фактическую структуру и ожидаемые schema additions проверяет штатный CLI migration inspector, а не запрещённые каталоги SDK.
+
+- `--diagnose` read-only: getMe, JSON-capability и aggregate counts; `receiptTableReady:false` допустимо до миграции.
+- `--dry-run` read-only: receipt table уже обязательна, countsV1/V2, fixed release receipt.
+- `--prepare`: INSERT ON CONFLICT DO NOTHING записывает фиксированный план `chipper-v0.2-clean-start` со status='prepared' (pending операция), source_sha, planned_legacy_players/remaining_legacy_players и identity. Игроков не изменяет.
+- `--apply`: требует prepared receipt; одним атомарным DELETE удаляет только целочисленную JSON schemaVersion=1 с EXISTS guard на этот prepared release/identity. После подтверждения legacy count0 отдельный conditional UPDATE/CAS переводит receipt в completed.
+
+`DELETE` и metadata completion **не являются одной транзакцией**. При потере ответа после DELETE pending план остаётся, повтор удаляет только V1 с нулевым новым эффектом и завершает metadata. Ни один V2 профиль не подходит под DELETE. Completed receipt запрещает дальнейшую запись/очистку; появление V1 после completion возвращает blockedCode RESET_LEGACY_AFTER_COMPLETION без новой очистки.
+
+Безопасность этой модели требует исключительно V2 writers после подготовки; возврат runtime 0.1 после status='prepared' запрещён. Ordinary gameplay/будущие deploy не вызывают helper. Wrapper prepare/apply дополнительно требует clean worktree и точный in-sync ответ pinned CLI0.2.0 от `migrate --local --dry-run`; неизвестный output/план блокирует изменение данных даже при exit0. Temporary endpoint удаляется в finally и никогда не публикуется.
+
+Данные receipt: release_key, status(prepared/completed), prepared_at, completed_at, planned_legacy_players, remaining_legacy_players, app_id, bot_username, source_sha. Planned count — зафиксированный план, не выдуманное число фактически удалённых rows. Никаких deleted_players из прежнего trigger design.
 
 ## 4. Telegram viewport, вертикальные свайпы и shell
 
@@ -136,7 +136,7 @@ player.flaps?: {
 ## 7. Рендерер Chippster Flaps
 
 - Физика/скоринг pure deterministic module в `games/flaps/engine` с fixed timestep (например 60 Hz) и accumulator cap, не привязывать игровые координаты к пикселям устройства.
-- Canvas 2D (предпочтительно) или проверенный лёгкий гибрид Canvas/DOM с sprite cache для рендера **того же активного** v1/v2 персонажа в динамике. Рисование не обязано использовать React renders 60 раз/сек.
+- Canvas 2D (предпочтительно) или проверенный лёгкий гибрид Canvas/DOM с sprite cache для рендера **того же активного** V2 персонажа в динамике. Рисование не обязано использовать React renders 60 раз/сек.
 - Кэш спрайта/выраженных поз на `appearanceVersion+genes+stage+size+DPR`, предотвращать дорогое пересоздание SVG при каждом кадре.
 - Пауза на `visibilitychange`/Telegram deactivate; при возвращении продолжать с отсечённой дельтой или завершать по TTL, но не «телепортироваться через препятствия».
 - Поле фиксированное, input `pointerdown`/touch + клавиатура Space для тестов, отсутствие пассивного браузерного scroll/zoom; плавная деградация под 30 FPS.
@@ -153,37 +153,35 @@ finishFlapsRun({ operationId, runId, score, endReason }) =>
 ```
 Запросы валидируются сервером. endReason: `crash | timeout` (либо согласованный enum), не принимать arbitrary cooldown/reward fields. Идентичность через `ctx.initData.user.id`, сервер проверяет attempt owner и `chickId` из сохранённой попытки.
 
-Старые `startMiniGame`/`finishMiniGame` можно оставить на одну версию для 0.1 клиентских сессий, но **не показывать зерновую игру в UI 0.2**; общий `miniGameRewardAt` не допускает получение двух наград через разные протоколы.
+Старые `startMiniGame`/`finishMiniGame` отклоняются без эффектов: игрок должен переоткрыть обновлённую игру. Поддержка старого игрового протокола не требуется.
 
 Игровую логику, конкретные длительности и антиабуз см. `CHIPPSTER_FLAPS_0.2.md`.
 
 ## 9. Стратегия live deploy, разрешённая владельцем
 
-**Владелец прямо разрешил** Codex публиковать новую 0.2 в действующий `@chipperhatcherybot` без отдельного подтверждения каждого штатного шага: в проекте сейчас бета, публичной аудитории не заявлено. Это разрешение **не** распространяется на удаление пользовательских данных, destructive migrations, force push, передачу секретов, незапрошенные платежи и изменения в других ботах.
+**Владелец прямо разрешил** Codex публиковать новую 0.2 в действующий `@chipperhatcherybot` без отдельного подтверждения каждого штатного шага: в проекте сейчас бета, публичной аудитории не заявлено. Владелец дополнительно разрешил один адресный reset chipper_players при переходе на 0.2. Он не разрешал удаление системных ресурсов/секретов, непроверенные destructive migrations, force push, платежи или изменения других ботов.
 
-### Порядок
+### Порядок recovery после опубликованной revision 2
 
-1. Ветка `feature/chipper-v0.2` от актуального `main`; сначала read-only repo status/head.
-2. Реализовать и провести локальные тесты. До первого live deploy зафиксировать исходный `main` SHA, baseline serverless revision, конфигурацию и обратимый артефакт из предыдущей рабочей сборки.
-3. Перед cloud write проверить, что авторизация CLI относится к `@chipperhatcherybot` и тому же bot app ID **8924974998**. Проверять без раскрытия токенов; `tgcloud fetch/status/diff`.
-4. Обнаружить неизвестные изменения в облаке. Если cloud revision отличается от ожиданий — fetch/сравнить, **не применять `--force`**.
-5. `npm ci` → typecheck/lint/unit/integration/ui/perf smoke → production build → анализ файлов и diff модулей. Убедиться, что удаление старой minigame UI не приведёт к непреднамеренному удалению runtime endpoint.
-6. Если необходимо изменить схему таблиц: сначала `npx tgcloud migrate --dry-run`, затем только подтверждённые `--safe` изменения, в порядке совместимого rollout. Предпочтительно **обойтись без SQL schema migration**, расширив существующий JSON.
-7. `npx tgcloud push` (только после успешных проверок); `npx tgcloud migrate --safe` **только если** реально есть согласованные safe schema changes. Для power-user proxy следовать `DOCS/DEPLOYMENT_0.1.md`; никакого `reset`, `push --force`.
-8. Проверить `status`, HTTP URL, отсутствие mock в production, BotFather Main Mini App/Menu Button, отсутствие 401 при *валидном* запуске владельцем — но никогда не симулировать реальные подписи чужих Telegram ID.
-9. Указать точное время деплоя, source SHA, cloud revision, фактически выполненные тесты, список manual A/B/C проверок и процедуру отката.
-10. Если live deploy блокируется отсутствием токена/сетью/неконтролируемым diff/опасной миграцией, **не маскировать блокер**; создать PR и инструкции, а не имитировать публикацию.
+1. Получить точный recovery SHA существующего PR#2, проверить clean worktree и tests. Не создавать новый PR/merge.
+2. Только read-only `--diagnose`: точный getMe, direct-column/JSON capability, valid ownership/version, countsV1/V2; до миграции missing receipt table допустима.
+3. `fetch/status/diff`, затем `migrate --local --dry-run`: допускается ровно ожидаемая новая `chipper_release_operations`, без удаления/изменения gameplay/сторонних объектов.
+4. Schema-only `push tgcloud/schema.js`; отдельно deployed `migrate --dry-run`, ожидаемый plan, `migrate --safe`; затем повторный dry-run обязательно No schema changes. Exit0 safe не подтверждает применение warning/manual changes.
+5. `--dry-run → --prepare → --apply → --dry-run`: fixed prepared receipt, legacy-only DELETE, completed metadata CAS, ноль V1 и сохранённые V2. Wrapper prepare/apply дополнительно проверяет CLI schema in-sync.
+6. `fetch/status`, точные source/cloud revision/URL/receipt/counts, затем signed acceptance A(бывший V1)/B(уже V2)/C(новый), A1/A2. Результаты pending до фактического выполнения.
 
-### Откат
+Каждая фаза проверяется до следующей. Не передавать весь изменяющий runbook одним многострочным paste: newline shell не останавливается при ошибке. Для допустимых последовательностей использовать &&; никаких force/--yes/destructive fallback. При неподдерживаемом JSON/DML/schema — технический blocker, не симуляция успешного reset.
 
-При регрессии допускается обратная публикация **последней реально рабочей версии кода**, но не SQL rollback/удаление записей. Сервер V2 должен писать так, чтобы при откате 0.1 хотя бы корректно загрузил player aggregate, даже если v2-питомец временно отрисуется legacy-compatible видом. Тестировать это **до** релиза.
+### Восстановление кода
+
+После prepared/completed только проверенный V2 checkpoint/fix-forward; runtime 0.1 вновь создавал бы V1 и нарушил fence. Receipt и новую игру не удалять. До prepared возможный rollback тоже требует отдельной оценки уже созданных V2, исходный 0.1 не считается автоматически совместимым. Исходные 0.1 документы остаются историческими.
 
 ## 10. Definition of Done технического слоя
 
 - TypeScript/lint/build/CI без ошибок.
-- Полный регресс 0.1: 62 domain+contract+races тестов как baseline (фактическое количество после переписывания задокументировать), плюс новые тесты.
-- Двойные запросы Start/Finish/hatch не дублируют награды; 20-часовой кулдаун общий для v1/v2 minigame.
+- Регресс неизменившихся правил экономики/ухода, V2 morphology, reset и fresh-onboarding; фактическое количество тестов задокументировать.
+- Двойные запросы Start/Finish/hatch не дублируют награды; 20-часовой кулдаун Flaps сохраняется после последующих обновлений.
 - A/B/C и два клиента одного Telegram ID логически изолированы; real user acceptance не выдаётся за автоматизированную.
-- Legacy птицы выглядят по-прежнему; V2 генетика не теряется после reload и rollback чтения.
+- V2 генетика не теряется после reload, возраста и переключения; новые аккаунты после reset изолированы.
 - Дом/Flaps не перетягивают вниз веб-документ; Коллекция/Профиль сохраняют скролл/клавиатуру.
 - Чистый production bundle без mock/токенов и доступный beta Mini App в **нужном боте**.

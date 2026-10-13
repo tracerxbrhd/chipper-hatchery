@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { call, getAuthKey, isDevMock, playFeedback } from './api/client';
-import type { ApiError, ApiResult, CareAction, Method, Snapshot } from './types';
+import type { ApiError, ApiResult, CareAction, Chick, Method, Snapshot } from './types';
 import { ru } from './i18n';
 import { HatchResult, Incubator, Onboarding } from './screens/EggScreens';
-import { Activities, GameResultScreen, GrainGame, type GameAttempt, type GameResult } from './screens/GameScreens';
+import { Activities, GameResultScreen, FlapsGame, type GameAttempt, type GameResult } from './screens/GameScreens';
 import { ChickCard, Collection, Home, Settings } from './screens/PetScreens';
-import { Icon, type IconName, type PetMotion, type Preferences } from './screens/Elements';
+import { Icon, type PetMotion, type Preferences } from './screens/Elements';
+import { Profile } from './screens/ProfileScreen';
+import { BottomDock, type Tab } from './navigation/BottomDock';
+import { ScreenTransition } from './navigation/ScreenTransition';
+import { setSceneGestures } from './api/telegram';
 import './app.css';
 
-type Tab = 'home' | 'incubator' | 'collection' | 'activities';
 type Screen = Tab | 'settings' | 'chick' | 'hatchResult' | 'game' | 'gameResult';
 type Success = Extract<ApiResult, { ok: true }>;
 interface Operation { method: Method; params: Record<string, unknown>; errorEventId: string; onSuccess?: (response: Success) => void }
-const tabs: { screen: Tab; icon: IconName }[] = [{ screen: 'home', icon: 'home' }, { screen: 'incubator', icon: 'egg' }, { screen: 'collection', icon: 'collection' }, { screen: 'activities', icon: 'game' }];
-const mutations = new Set<Method>(['hatchEgg', 'completeOnboarding', 'careAction', 'activateChick', 'renameChick', 'buyEgg', 'startMiniGame', 'finishMiniGame', 'logEvent']);
+const mutations = new Set<Method>(['hatchEgg', 'completeOnboarding', 'careAction', 'activateChick', 'renameChick', 'buyEgg', 'startFlapsRun', 'finishFlapsRun', 'logEvent']);
 
 function readPreferences(): Preferences {
   try {
@@ -42,6 +44,8 @@ export default function App() {
   const [toast, setToast] = useState('');
   const toastTimer = useRef<number | undefined>(undefined);
   const [preferences, setPreferences] = useState(readPreferences);
+  const preferencesRef = useRef(preferences);
+  preferencesRef.current = preferences;
   const [systemReducedMotion, setSystemReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [motion, setMotion] = useState<PetMotion>('idle');
   const motionTimer = useRef<number | undefined>(undefined);
@@ -68,8 +72,8 @@ export default function App() {
   }, []);
 
   const feedback = useCallback((kind: string) => {
-    playFeedback(kind, preferences.sound, preferences.haptics);
-  }, [preferences.sound, preferences.haptics]);
+    playFeedback(kind, preferencesRef.current.sound, preferencesRef.current.haptics);
+  }, []);
 
   const animate = useCallback((next: PetMotion) => {
     window.clearTimeout(motionTimer.current);
@@ -171,12 +175,14 @@ export default function App() {
   }, [state, outside, screen, refresh]);
 
   const go = useCallback((next: Screen) => {
-    if (next === 'home' || next === 'incubator' || next === 'collection' || next === 'activities') setBackTo(next);
+    if (next === 'home' || next === 'incubator' || next === 'collection' || next === 'activities' || next === 'profile') setBackTo(next);
     setScreen(next);
-    window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
-  const back = useCallback(() => { go(screen === 'game' || screen === 'gameResult' ? 'activities' : screen === 'hatchResult' ? 'incubator' : backTo); }, [screen, backTo, go]);
+  const back = useCallback(() => {
+    if (screen === 'game') { window.dispatchEvent(new CustomEvent('chipper:flaps-back')); return; }
+    go(screen === 'gameResult' ? 'activities' : screen === 'hatchResult' ? 'incubator' : backTo);
+  }, [screen, backTo, go]);
   const secondaryScreen = ['settings', 'chick', 'hatchResult', 'game', 'gameResult'].includes(screen);
   useEffect(() => {
     const button = window.Telegram?.WebApp?.BackButton;
@@ -215,30 +221,40 @@ export default function App() {
       if (typeof id === 'string') { setHatchId(id); go('hatchResult'); }
     });
   };
-  const startGame = () => perform('startMiniGame', {}, response => {
+  const startGame = () => perform('startFlapsRun', {}, response => {
     const result = response.result;
-    if (!result || typeof result.attemptId !== 'string' || typeof result.finishAfter !== 'number' || typeof result.expiresAt !== 'number') {
+    const captured = result?.chick;
+    const bird = captured && typeof captured === 'object' && 'id' in captured && captured.id === result?.chickId ? captured as Chick : response.state.chicks.find(chick => chick.id === result?.chickId);
+    if (!result || !bird || typeof result.runId !== 'string' || typeof result.startedAt !== 'number' || typeof result.expiresAt !== 'number' || typeof result.configVersion !== 'string') {
       setError({ code: 'INVALID_RESPONSE', message: ru.errorBody, retryable: false });
       return;
     }
-    setAttempt({ attemptId: result.attemptId, durationMs: Math.max(25_000, result.finishAfter - response.state.serverNow + 350), expiresAt: result.expiresAt });
+    setAttempt({ runId: result.runId, chickId: bird.id, chick: structuredClone(bird), startedAt: result.startedAt, expiresAt: result.expiresAt, configVersion: result.configVersion });
     setGameResult(null);
     feedback('soft');
     go('game');
   });
-  const finishGame = (score: number) => {
+  const finishGame = (score: number, endReason: 'crash' | 'bounds') => {
     if (!attempt) return;
-    perform('finishMiniGame', { attemptId: attempt.attemptId, score }, response => { setGameResult({ score, rewarded: response.result?.rewarded === true }); setAttempt(null); feedback('success'); go('gameResult'); });
+    perform('finishFlapsRun', { runId: attempt.runId, score, endReason }, response => {
+      const result = response.result;
+      if (!result || typeof result.score !== 'number' || typeof result.bestScore !== 'number' || typeof result.previousBest !== 'number') {
+        setError({ code: 'INVALID_RESPONSE', message: ru.errorBody, retryable: false }); return;
+      }
+      setGameResult({ score: result.score, bestScore: result.bestScore, previousBest: result.previousBest, newBest: result.newBest === true, rewarded: result.rewarded === true, rewardNextAt: typeof result.rewardNextAt === 'number' ? result.rewardNextAt : null, reason: result.reason === 'rewarded' || result.reason === 'cooldown' ? result.reason : 'too_short' });
+      feedback('success'); go('gameResult');
+    });
   };
 
   const active = state?.chicks.find(chick => chick.id === state.player.activeChickId);
   const selected = state?.chicks.find(chick => chick.id === selectedId);
   const hatched = state?.chicks.find(chick => chick.id === hatchId);
   const onboarding = state !== null && state.player.onboarding !== 'done';
+  useEffect(() => { setSceneGestures(!onboarding && (screen === 'home' || screen === 'game')); }, [screen, onboarding]);
   const view = { busy: busy || Boolean(error?.retryable), now, reducedMotion };
   const retry = () => { if (operationRef.current) void execute(operationRef.current); else perform(state ? 'getHome' : 'bootstrap'); };
   const recover = () => {
-    const abandonedRound = operationRef.current?.method === 'finishMiniGame' && !error?.retryable;
+    const abandonedRound = screenRef.current === 'game' && !error?.retryable;
     operationRef.current = null;
     setError(null);
     if (abandonedRound) { setAttempt(null); go('activities'); }
@@ -246,12 +262,14 @@ export default function App() {
   };
 
   if (outside) return <div className="app outside-app"><main><div className="outside-symbol"><Icon name="egg" size={64} /></div><p className="eyebrow">{ru.app}</p><h1>{ru.outsideTitle}</h1><p className="intro">{ru.outsideBody}</p><a className="button primary" href="https://t.me/chipperhatcherybot" target="_blank" rel="noreferrer">{ru.openBot}</a></main></div>;
-  return <div className={`app ${reducedMotion ? 'reduce-motion' : ''}`} data-motion={reducedMotion ? 'off' : 'on'}>
+  const dockActive = screen === 'gameResult' ? 'activities' : screen === 'hatchResult' ? 'incubator' : secondaryScreen ? backTo : screen as Tab;
+  return <div className={`app ${screen === 'game' ? 'flaps-app' : ''} ${reducedMotion ? 'reduce-motion' : ''}`} data-motion={reducedMotion ? 'off' : 'on'}>
     {isDevMock && <div className="dev-banner">{ru.devMock}</div>}
-    <header className="app-header"><div className="brand"><span className="brand-mark" aria-hidden="true">c<span>✦</span></span><span>{ru.app}<small>hatchery</small></span></div>{state && !onboarding && <div className="header-actions"><span className="feather-balance" aria-label={ru.feathers(state.player.feathers)}><Icon name="feather" size={19} /><strong>{state.player.feathers}</strong></span><button className="icon-button" aria-label={secondaryScreen ? ru.back : ru.settings} onClick={secondaryScreen ? back : () => go('settings')}><Icon name={secondaryScreen ? 'back' : 'settings'} /></button></div>}</header>
-    <main className={`app-main ${screen === 'game' ? 'game-main' : ''}`}>
+    {screen !== 'game' && <header className="app-header"><div className="brand"><span className="brand-mark" aria-hidden="true">c<span>✦</span></span><span>{ru.app}<small>hatchery</small></span></div>{state && !onboarding && <div className="header-actions"><span className="feather-balance" aria-label={ru.feathers(state.player.feathers)}><Icon name="feather" size={19} /><strong>{state.player.feathers}</strong></span>{secondaryScreen && <button className="icon-button" aria-label={ru.back} onClick={back}><Icon name="back" /></button>}</div>}</header>}
+    <main className={`app-main ${screen === 'game' ? 'game-main' : screen === 'home' && !onboarding ? 'scene-main' : ''}`}>
       {!online && <div className="offline-banner" role="status">{ru.offline}</div>}
       {error && <div className="error-banner" role="alert"><div><strong>{ru.errorTitle}</strong><p>{error.message || ru.errorBody}</p></div><button className="button small-button" onClick={error.retryable ? retry : recover} disabled={busy}>{busy ? ru.waiting : error.retryable ? ru.retry : ru.refresh}</button></div>}
+      <ScreenTransition route={onboarding ? `onboarding-${state?.player.onboarding}` : screen} fixed={!onboarding && (screen === 'home' || screen === 'game')}>
       {!state ? !error && <div className="loading-state" role="status"><span className="spinner" /><p>{ru.loading}</p></div> : onboarding ? <Onboarding key={state.player.onboarding} state={state} busy={view.busy} reducedMotion={reducedMotion} onHatch={hatch} onComplete={completeOnboarding} /> : <>
         {screen === 'home' && <Home state={state} {...view} motion={motion} onCare={care} onCard={id => { setSelectedId(id); go('chick'); }} />}
         {screen === 'incubator' && <Incubator state={state} {...view} onBuy={() => perform('buyEgg', {}, () => { feedback('success'); notify(ru.eggBought); })} onHatch={hatch} />}
@@ -259,12 +277,14 @@ export default function App() {
         {screen === 'chick' && selected && <ChickCard key={selected.id} chick={selected} state={state} {...view} onActivate={() => activate(selected.id)} onRename={name => perform('renameChick', { chickId: selected.id, name }, () => { feedback('success'); notify(ru.renamed); })} />}
         {screen === 'activities' && <Activities state={state} {...view} onStart={startGame} />}
         {screen === 'settings' && <Settings preferences={preferences} onChange={updatePreference} onRefresh={() => perform('getHome', {}, () => notify(ru.refreshed))} busy={view.busy} />}
+        {screen === 'profile' && <Profile state={state} now={now} onSettings={() => go('settings')} />}
         {screen === 'hatchResult' && hatched && <HatchResult chick={hatched} busy={view.busy} reducedMotion={reducedMotion} onActivate={() => activate(hatched.id)} onCollection={() => go('collection')} />}
-        {screen === 'game' && attempt && <GrainGame key={attempt.attemptId} attempt={attempt} chick={active} busy={view.busy} reducedMotion={reducedMotion} onComplete={finishGame} onGrain={() => feedback('grain')} onLeave={() => { setAttempt(null); go('activities'); }} />}
-        {screen === 'gameResult' && gameResult && <GameResultScreen result={gameResult} chick={active} busy={view.busy} reducedMotion={reducedMotion} onAgain={startGame} onHome={() => go('home')} />}
+        {screen === 'game' && attempt && <FlapsGame key={attempt.runId} attempt={attempt} {...view} sound={preferences.sound} haptics={preferences.haptics} onComplete={finishGame} onLeave={() => { setAttempt(null); go('activities'); }} />}
+        {screen === 'gameResult' && gameResult && <GameResultScreen result={gameResult} chick={attempt?.chick ?? active} {...view} onAgain={startGame} onHome={() => go('home')} />}
       </>}
+      </ScreenTransition>
     </main>
-    {state && !onboarding && screen !== 'game' && <nav className="bottom-nav" aria-label={ru.app}>{tabs.map(tab => <button key={tab.screen} className={screen === tab.screen || (screen === 'chick' && tab.screen === backTo) || (screen === 'hatchResult' && tab.screen === 'incubator') || (screen === 'gameResult' && tab.screen === 'activities') ? 'selected' : ''} aria-current={screen === tab.screen ? 'page' : undefined} onClick={() => go(tab.screen)}><Icon name={tab.icon} /><span>{ru[tab.screen]}</span></button>)}</nav>}
+    {state && !onboarding && screen !== 'game' && <BottomDock active={dockActive} onNavigate={go} />}
     {toast && <div className="toast" role="status">{toast}</div>}
   </div>;
 }

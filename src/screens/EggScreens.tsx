@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Chick, Snapshot } from '../types';
-import { APPEARANCE_LABELS, ChickArt } from '../components/ChickArt';
+import { getAppearanceLabel, ChickArt } from '../components/ChickArt';
 import { EggArt } from '../components/EggArt';
 import { duration, ru } from '../i18n';
 import { Icon, NameForm, type ViewProps } from './Elements';
@@ -9,7 +9,7 @@ export function Onboarding({ state, busy, reducedMotion, onHatch, onComplete }: 
   const [started, setStarted] = useState(false);
   const [cracks, setCracks] = useState(0);
   const chick = state.chicks.find(item => item.id === state.player.activeChickId);
-  if (state.player.onboarding === 'name' && chick) return <section className="onboarding name-step"><p className="eyebrow">{ru.app}</p><h1>{ru.firstHatch}</h1><div className="onboarding-art"><ChickArt appearanceId={chick.appearanceId} stage={chick.stage} state="hatch" reducedMotion={reducedMotion} size={255} /></div><div className="bird-tags"><span>{APPEARANCE_LABELS[chick.appearanceId] ?? chick.appearanceId}</span><span className={`rarity-tag ${chick.rarity}`}>{ru.rarities[chick.rarity]}</span></div><p className="intro">{ru.firstHatchBody}</p><NameForm initial={chick.name} busy={busy} onSave={onComplete} onSkip={() => onComplete()} /></section>;
+  if (state.player.onboarding === 'name' && chick) return <section className="onboarding name-step"><p className="eyebrow">{ru.app}</p><h1>{ru.firstHatch}</h1><div className="onboarding-art"><ChickArt chick={chick} state="hatch" reducedMotion={reducedMotion} size={255} /></div><div className="bird-tags"><span>{getAppearanceLabel(chick)}</span><span className={`rarity-tag ${chick.rarity}`}>{ru.rarities[chick.rarity]}</span></div><p className="intro">{ru.firstHatchBody}</p><NameForm initial={chick.name} busy={busy} onSave={onComplete} onSkip={() => onComplete()} /></section>;
   const tap = () => {
     if (!started || busy || cracks >= 3) return;
     const next = cracks + 1;
@@ -31,5 +31,5 @@ export function Incubator({ state, now, busy, reducedMotion, onBuy, onHatch }: V
 }
 
 export function HatchResult({ chick, busy, reducedMotion, onActivate, onCollection }: { chick: Chick; busy: boolean; reducedMotion: boolean; onActivate: () => void; onCollection: () => void }) {
-  return <section className="hatch-result"><span className="success-badge"><Icon name="check" /></span><h1>{ru.newChickTitle}</h1><div className="result-art"><ChickArt appearanceId={chick.appearanceId} stage={chick.stage} state="hatch" reducedMotion={reducedMotion} size={280} /></div><h2>{chick.name}</h2><div className="bird-tags"><span>{APPEARANCE_LABELS[chick.appearanceId] ?? chick.appearanceId}</span><span className={`rarity-tag ${chick.rarity}`}>{ru.rarities[chick.rarity]}</span></div><p className="intro">{ru.newChickBody}</p><button className="button primary" disabled={busy} onClick={onActivate}>{ru.activate}</button><button className="button text-button" onClick={onCollection} disabled={busy}>{ru.goCollection}</button></section>;
+  return <section className="hatch-result"><span className="success-badge"><Icon name="check" /></span><h1>{ru.newChickTitle}</h1><div className="result-art"><ChickArt chick={chick} state="hatch" reducedMotion={reducedMotion} size={280} /></div><h2>{chick.name}</h2><div className="bird-tags"><span>{getAppearanceLabel(chick)}</span><span className={`rarity-tag ${chick.rarity}`}>{ru.rarities[chick.rarity]}</span></div><p className="intro">{ru.newChickBody}</p><button className="button primary" disabled={busy} onClick={onActivate}>{ru.activate}</button><button className="button text-button" onClick={onCollection} disabled={busy}>{ru.goCollection}</button></section>;
 }

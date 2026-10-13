@@ -1,6 +1,6 @@
 # Chipper 0.2 — реализация Living Hatchery
 
-Рабочая ветка `feature/chipper-v0.2` от актуального main. Реализация заменяет художественную систему 0.1 и grain mini-game; документы 0.1 оставлены историческими. Полный immutable source SHA и PR указываются в финальном acceptance report.
+Рабочая ветка `feature/chipper-v0.2` от актуального main. Реализация заменяет художественную систему 0.1 и grain mini-game; документы 0.1 оставлены историческими. Проверенный source checkpoint: `5ffea76c3d939c33779aab4d5522240c7480b7b5`. [PR #2](https://github.com/tracerxbrhd/chipper-hatchery/pull/2) открыт, merge не выполнен. Точные проверки — в acceptance report.
 
 ## Модули
 

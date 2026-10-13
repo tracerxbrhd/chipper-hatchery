@@ -6,8 +6,8 @@
 |---|---|
 | Ветка | feature/chipper-v0.2 → main, merge не выполняется |
 | Начальный main | 95fd2d13abbdbc394932ec249472147e496afca9 |
-| Проверенный source checkpoint | Заполняется после публикации Git-коммита |
-| PR | Заполняется после создания одного PR |
+| Проверенный source checkpoint | 5ffea76c3d939c33779aab4d5522240c7480b7b5 |
+| PR | https://github.com/tracerxbrhd/chipper-hatchery/pull/2 — открыт, merge не выполнялся |
 | Runtime | Node v24.19.0, Chromium 153.0.8010.0, Playwright 1.64.0 |
 | Serverless CLI | @tgcloud/cli 0.2.0; это версия CLI, не cloud revision |
 | Bot/App | Ожидаются @chipperhatcherybot / 8924974998; live getMe не подтверждён |

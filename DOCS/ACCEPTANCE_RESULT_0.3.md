@@ -12,7 +12,7 @@
 | Проверенный локальный checkpoint | **`285b75f06a308ef141030a19e7281691383ee461`** |
 | Runtime commit в GitHub | **`9db3c6e95b1bfe9df390ebb525ce428cd79643a5`**, идентичный tree `5f65e3490a9814b9316424f88466c6ec6af69258` |
 | Финальный HEAD | Позднейшие commits только дополняют этот отчёт/логи; runtime checkpoint выше |
-| PR | Создаётся после фиксации отчёта; ссылка будет внесена отдельным docs commit |
+| PR | **[PR #3](https://github.com/tracerxbrhd/chipper-hatchery/pull/3)**, открыт в main, не merged |
 | Merge | Не выполнялся |
 | Окружение | Node24.19.0, SQLite3.53.3, Chromium153, @tgcloud/cli0.2.0 |
 

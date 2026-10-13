@@ -1,8 +1,10 @@
 /** Chipper's deterministic rules. No platform or browser dependencies. */
+import { CHICK_PRESETS, generateGenes, validGenes } from './chickGenes.js';
+import { FLAPS_CONFIG, maximumPlausibleScore } from './flapsRules.js';
 const HOUR = 60 * 60 * 1000;
 
 export const BALANCE = Object.freeze({
-  version: '0.1.0',
+  version: '0.2.0',
   hourMs: HOUR,
   careCooldownMs: 4 * HOUR,
   careCycleWindowMs: 30 * 60 * 1000,
@@ -12,8 +14,7 @@ export const BALANCE = Object.freeze({
   eggCost: 6,
   teenAgeMs: 20 * HOUR,
   adultAgeMs: 72 * HOUR,
-  miniGameDurationMs: 25000,
-  miniGameMinDurationMs: 25000,
+  miniGameMinDurationMs: 2000,
   miniGameAttemptTtlMs: 10 * 60 * 1000,
   miniGameStartLimit: 6,
   miniGameStartWindowMs: 60000,
@@ -23,20 +24,7 @@ export const BALANCE = Object.freeze({
   careEffects: Object.freeze({ feed: 30, play: 22 }),
 });
 
-export const APPEARANCES = Object.freeze([
-  { id: 'charcoal', name: 'Угольный', rarity: 'common', weight: 70 / 6 },
-  { id: 'cloud', name: 'Облачный', rarity: 'common', weight: 70 / 6 },
-  { id: 'fluffy', name: 'Пухляш', rarity: 'common', weight: 70 / 6 },
-  { id: 'spot', name: 'Пятнышко', rarity: 'common', weight: 70 / 6 },
-  { id: 'sleepy', name: 'Соня', rarity: 'common', weight: 70 / 6 },
-  { id: 'tiny', name: 'Крошка', rarity: 'common', weight: 70 / 6 },
-  { id: 'ash', name: 'Пепельный', rarity: 'uncommon', weight: 25 / 4 },
-  { id: 'ginger', name: 'Рыжий хохолок', rarity: 'uncommon', weight: 25 / 4 },
-  { id: 'midnight', name: 'Полуночный', rarity: 'uncommon', weight: 25 / 4 },
-  { id: 'snow', name: 'Снежный', rarity: 'uncommon', weight: 25 / 4 },
-  { id: 'star', name: 'Звёздный', rarity: 'rare', weight: 5 / 2 },
-  { id: 'gold', name: 'Золотистый', rarity: 'rare', weight: 5 / 2 },
-].map((appearance) => Object.freeze(appearance)));
+export const APPEARANCES = CHICK_PRESETS;
 
 export class GameError extends Error {
   constructor(code, message, { retryable = false, retryAt } = {}) {
@@ -62,6 +50,8 @@ const PARAMS = Object.freeze({
   buyEgg: [],
   startMiniGame: [],
   finishMiniGame: ['attemptId', 'score'],
+  startFlapsRun: [],
+  finishFlapsRun: ['runId', 'score', 'endReason'],
   logEvent: ['event', 'details'],
 });
 
@@ -134,6 +124,17 @@ export function validateRequest(method, input) {
     }
     canonical.score = params.score;
   }
+  if (method === 'finishFlapsRun') {
+    canonical.runId = requireId(params.runId);
+    if (!Number.isSafeInteger(params.score) || params.score < 0 || params.score > 10000) {
+      throw new GameError('INVALID_SCORE', 'Некорректный результат Chippster Flaps.');
+    }
+    if (!['crash', 'bounds'].includes(params.endReason)) {
+      throw new GameError('INVALID_REQUEST', 'Некорректная причина завершения раунда.');
+    }
+    canonical.score = params.score;
+    canonical.endReason = params.endReason;
+  }
   if (method === 'logEvent') {
     if (!['app_opened', 'app_error'].includes(params.event)) {
       throw new GameError('INVALID_REQUEST', 'Это событие записывает только сервер.');
@@ -193,11 +194,12 @@ export function recordEvent(state, event, now, details = {}) {
 
 export function createInitialState(telegramId, now, id) {
   const state = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     balanceVersion: BALANCE.version,
     createdAt: now,
     updatedAt: now,
-    player: { telegramId: String(telegramId), feathers: 0, activeChickId: null, onboarding: 'egg', careRewardAt: null, miniGameRewardAt: null },
+    player: { telegramId: String(telegramId), feathers: 0, activeChickId: null, onboarding: 'egg', careRewardAt: null, miniGameRewardAt: null,
+      flaps: { bestScore: 0, completedRuns: 0, lastPlayedAt: null } },
     chicks: [],
     eggs: [],
     attempts: [],
@@ -257,6 +259,7 @@ export function snapshot(state, revision, now) {
     player: clone(state.player),
     chicks: state.chicks.map((chick) => ({
       id: chick.id, appearanceId: chick.appearanceId, rarity: chick.rarity,
+      appearanceVersion: 2, genes: clone(chick.genes),
       name: chick.name, bornAt: chick.bornAt, stage: chick.stage,
       hunger: chick.hunger, mood: chick.mood, energy: chick.energy,
       lastFeedAt: chick.lastFeedAt, lastPlayAt: chick.lastPlayAt,
@@ -279,6 +282,16 @@ export function selectAppearance(random) {
   return choices[Math.min(choices.length - 1, Math.floor(((value - start) / span) * choices.length))];
 }
 
+/** 0.1 aggregates need the authorized release reset; reads never delete. */
+export function validateStateVersion(state) {
+  if (state?.schemaVersion !== 2) {
+    throw new GameError('RESET_REQUIRED', 'Гнездо обновляется до Chipper 0.2. Попробуйте зайти чуть позже.', { retryable: true });
+  }
+  if (!state.player?.flaps || state.chicks.some((chick) => chick.appearanceVersion !== 2 || !validGenes(chick.genes))) {
+    throw new GameError('INVALID_SAVE', 'Не удалось прочитать сохранение. Попробуйте ещё раз.', { retryable: true });
+  }
+}
+
 function ownChick(state, chickId, requireActive = false) {
   const chick = state.chicks.find((entry) => entry.id === chickId);
   if (!chick) throw new GameError('CHICK_NOT_FOUND', 'Цыплёнок не найден в вашей коллекции.');
@@ -294,9 +307,17 @@ function hatch(state, eggId, now, random, id) {
   if (egg.chickId !== null) return { chickId: egg.chickId };
   if (now < egg.readyAt) throw new GameError('EGG_NOT_READY', 'Яйцо ещё согревается.', { retryAt: egg.readyAt });
   const appearance = selectAppearance(random);
+  const genes = generateGenes(appearance, () => {
+    const value = random();
+    if (!Number.isFinite(value) || value < 0 || value >= 1) {
+      throw new GameError('TEMPORARILY_UNAVAILABLE', 'Не удалось вылупить яйцо. Попробуйте ещё раз.', { retryable: true });
+    }
+    return value;
+  });
   const chickId = newId(state, id);
   const chick = {
     id: chickId, appearanceId: appearance.id, rarity: appearance.rarity,
+    appearanceVersion: 2, genes,
     name: `Цып №${state.chicks.length + 1}`, bornAt: now, stage: 'baby',
     ...BALANCE.initialNeeds,
     lastFeedAt: null, lastPlayAt: null, sleepUntil: null,
@@ -395,8 +416,12 @@ export function applyMutation(state, method, params, { now, random, id }) {
       recordEvent(state, 'egg_created', now);
       return { eggId };
     }
-    case 'startMiniGame': {
+    case 'startMiniGame':
+    case 'finishMiniGame':
+      throw new GameError('GAME_REPLACED', 'Теперь здесь Chippster Flaps. Обновите Mini App.');
+    case 'startFlapsRun': {
       if (state.chicks.length === 0) throw new GameError('FIRST_HATCH_REQUIRED', 'Сначала помогите цыплёнку вылупиться.');
+      const chick = ownChick(state, state.player.activeChickId, true);
       const recent = state.attempts.filter((attempt) => attempt.startedAt > now - BALANCE.miniGameStartWindowMs);
       if (recent.length >= BALANCE.miniGameStartLimit) {
         const retryAt = Math.min(...recent.map((attempt) => attempt.startedAt)) + BALANCE.miniGameStartWindowMs;
@@ -405,31 +430,55 @@ export function applyMutation(state, method, params, { now, random, id }) {
       // One unfinished attempt prevents trivial mass creation. A new round may
       // explicitly supersede an abandoned one, without modifying sleep or care.
       for (const attempt of state.attempts) if (attempt.finishedAt === null) attempt.cancelled = true;
-      const attempt = { id: newId(state, id), startedAt: now, finishAfter: now + BALANCE.miniGameMinDurationMs,
-        expiresAt: now + BALANCE.miniGameAttemptTtlMs, finishedAt: null, cancelled: false, rewarded: false, score: null };
+      // Receipts remain permanent; a pruned run cannot pay again with a fresh
+      // operation key. Rate limiting retains every start inside its window.
+      state.attempts = state.attempts.filter((attempt) => now <= attempt.expiresAt);
+      const attempt = { kind: 'flaps', id: newId(state, id), chickId: chick.id,
+        chick: snapshot(state, 0, now).chicks.find((entry) => entry.id === chick.id),
+        configVersion: FLAPS_CONFIG.configVersion, startedAt: now,
+        expiresAt: now + BALANCE.miniGameAttemptTtlMs, finishedAt: null,
+        cancelled: false, score: null, endReason: null, result: null };
       state.attempts.push(attempt);
-      recordEvent(state, 'minigame_started', now);
-      return { attemptId: attempt.id, startedAt: attempt.startedAt, finishAfter: attempt.finishAfter, expiresAt: attempt.expiresAt };
+      recordEvent(state, 'flaps_started', now);
+      return { runId: attempt.id, chickId: attempt.chickId, chick: clone(attempt.chick),
+        startedAt: attempt.startedAt, expiresAt: attempt.expiresAt, configVersion: attempt.configVersion };
     }
-    case 'finishMiniGame': {
-      const attempt = state.attempts.find((entry) => entry.id === params.attemptId);
+    case 'finishFlapsRun': {
+      const attempt = state.attempts.find((entry) => entry.kind === 'flaps' && entry.id === params.runId);
       if (!attempt) throw new GameError('ATTEMPT_NOT_FOUND', 'Начните новый раунд игры.');
+      ownChick(state, attempt.chickId);
       if (attempt.finishedAt !== null) {
-        if (attempt.score !== params.score) throw new GameError('ATTEMPT_ALREADY_FINISHED', 'Результат этого раунда уже сохранён.');
-        return { rewarded: attempt.rewarded };
+        if (attempt.score !== params.score || attempt.endReason !== params.endReason) {
+          throw new GameError('ATTEMPT_ALREADY_FINISHED', 'Результат этого раунда уже сохранён.');
+        }
+        return clone(attempt.result);
       }
       if (attempt.cancelled) throw new GameError('ATTEMPT_CANCELLED', 'Этот раунд заменён новым.');
       if (now > attempt.expiresAt) throw new GameError('ATTEMPT_EXPIRED', 'Время раунда истекло. Начните новый.');
-      if (now < attempt.finishAfter) throw new GameError('ATTEMPT_TOO_EARLY', 'Раунд ещё не завершён.', { retryAt: attempt.finishAfter });
+      const elapsed = now - attempt.startedAt;
+      if (params.score > maximumPlausibleScore(elapsed)) {
+        throw new GameError('INVALID_SCORE', 'Такой счёт невозможен за время этого раунда.');
+      }
+      const previousBest = state.player.flaps.bestScore;
+      const tooShort = elapsed < BALANCE.miniGameMinDurationMs;
+      const rewarded = !tooShort && available(state.player.miniGameRewardAt, now);
       attempt.finishedAt = now;
       attempt.score = params.score;
-      attempt.rewarded = available(state.player.miniGameRewardAt, now);
-      if (attempt.rewarded) {
+      attempt.endReason = params.endReason;
+      if (rewarded) {
         state.player.feathers += 1;
         state.player.miniGameRewardAt = now;
+        recordEvent(state, 'flaps_reward_claimed', now);
       }
-      recordEvent(state, 'minigame_finished', now);
-      return { rewarded: attempt.rewarded };
+      state.player.flaps.bestScore = Math.max(previousBest, params.score);
+      state.player.flaps.completedRuns += 1;
+      state.player.flaps.lastPlayedAt = now;
+      attempt.result = { score: params.score, previousBest, bestScore: state.player.flaps.bestScore,
+        newBest: params.score > previousBest, rewarded,
+        rewardNextAt: available(state.player.miniGameRewardAt, now) ? null : state.player.miniGameRewardAt + BALANCE.rewardCooldownMs,
+        reason: rewarded ? 'rewarded' : tooShort ? 'too_short' : 'cooldown' };
+      recordEvent(state, 'flaps_finished', now);
+      return clone(attempt.result);
     }
     case 'logEvent': {
       if (now - state.telemetry.clientWindowAt >= 60000) {

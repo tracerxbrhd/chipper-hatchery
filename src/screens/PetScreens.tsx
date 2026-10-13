@@ -1,28 +1,34 @@
 import { useState } from 'react';
 import type { CareAction, Chick, Snapshot } from '../types';
-import { APPEARANCE_LABELS, ChickArt } from '../components/ChickArt';
+import { ChickArt } from '../components/ChickArt';
+import { getAppearanceLabel } from '../chicks/models';
+import { HomeWorld } from '../world/HomeWorld';
 import { ageText, birthText, duration, ru } from '../i18n';
 import { actionIcons, careReadyAt, Icon, isSleeping, NameForm, Needs, rewardReadyAt, type PetMotion, type Preferences, type ViewProps } from './Elements';
 
 export function Home({ state, motion, onCare, onCard, ...view }: ViewProps & { state: Snapshot; motion: PetMotion; onCare: (action: CareAction) => void; onCard: (id: string) => void }) {
+  const [careTipOpen, setCareTipOpen] = useState(false);
   const chick = state.chicks.find(item => item.id === state.player.activeChickId);
   if (!chick) return <div className="empty-state"><h1>{ru.emptyCollection}</h1><p>{ru.emptyCollectionBody}</p></div>;
   const sleeping = isSleeping(chick, view.now);
   const awaitingWake = chick.sleepUntil !== null && chick.sleepUntil <= view.now;
-  const petMotion = sleeping || awaitingWake ? 'sleep' : motion !== 'idle' ? motion : chick.energy < 50 ? 'sleepy' : 'idle';
   const status = sleeping ? ru.sleeping : awaitingWake ? ru.sleepSync : motion === 'feed' ? ru.fed : motion === 'play' ? ru.played : chick.energy < 50 ? ru.sleepy : chick.hunger < 50 ? ru.hungry : ru.homeGreeting;
   const careRemaining = rewardReadyAt(state.player.careRewardAt) - view.now;
   const recentFeed = chick.lastFeedAt !== null && view.now - chick.lastFeedAt <= 30 * 60_000;
   const recentPlay = chick.lastPlayAt !== null && view.now - chick.lastPlayAt <= 30 * 60_000;
   const cycleHint = recentFeed && !recentPlay ? ru.careStartedFeed : recentPlay && !recentFeed ? ru.careStartedPlay : ru.careBody;
-  return <>
-    <section className="home-hero">
-      <p className="eyebrow">{ru.homeEyebrow}</p>
+  const action = motion === 'feed' || motion === 'play' || motion === 'grow' ? motion : 'idle';
+  const actionKey = action === 'feed' ? chick.lastFeedAt ?? 0 : action === 'play' ? chick.lastPlayAt ?? 0 : action === 'grow' ? chick.stage : 0;
+  return <section className="home-screen">
+    <div className="home-heading">
       <button className="pet-title" onClick={() => onCard(chick.id)}><h1>{chick.name}</h1><span className="stage-label">{ru.stage[chick.stage]} <span aria-hidden="true">↗</span></span></button>
-      <div className="hero-art"><ChickArt appearanceId={chick.appearanceId} stage={chick.stage} state={petMotion} reducedMotion={view.reducedMotion} /></div>
+      <span className="home-heading-note">{ru.homeEyebrow}</span>
+    </div>
+    <HomeWorld key={chick.id} chick={chick} animate={!view.reducedMotion} sleeping={sleeping || awaitingWake} now={view.now} action={action} actionKey={actionKey} />
+    <div className="home-status">
       <p className="pet-status" aria-live="polite">{status}</p>
       {sleeping && <p className="timer-note">{ru.sleepRemaining} <strong>{duration((chick.sleepUntil ?? 0) - view.now)}</strong></p>}
-    </section>
+    </div>
     <Needs chick={chick} />
     <div className="care-actions">
       {(['feed', 'play', 'sleep'] as const).map(action => {
@@ -33,8 +39,13 @@ export function Home({ state, motion, onCare, onCard, ...view }: ViewProps & { s
         return <button className={`care-button ${action}`} key={action} disabled={view.busy || locked} onClick={() => onCare(action)}><Icon name={actionIcons[action]} size={25} /><strong>{ru[action]}</strong><small>{caption}</small></button>;
       })}
     </div>
-    <section className="quiet-card care-tip"><div className="tip-symbol"><Icon name="feather" /></div><div><h2>{ru.careTitle}</h2><p>{cycleHint}</p><span className="mini-label">{careRemaining > 0 ? `${ru.careRewardAfter} ${duration(careRemaining)}` : ru.careRewardAvailable}</span></div></section>
-  </>;
+    <div className="care-summary">
+      <button type="button" className="care-summary-toggle" aria-expanded={careTipOpen} aria-controls="care-tip-detail" onClick={() => setCareTipOpen(open => !open)}>
+        <Icon name="feather" /><span className="care-summary-text"><strong>{recentFeed !== recentPlay ? cycleHint : ru.careTitle}</strong><span>{careRemaining > 0 ? `${ru.careRewardAfter} ${duration(careRemaining)}` : ru.careRewardAvailable}</span></span><span className="care-summary-chevron" aria-hidden="true">⌃</span>
+      </button>
+      {careTipOpen && <div className="care-tip-popover" id="care-tip-detail"><h2>{ru.careTitle}</h2><p>{ru.careBody}</p></div>}
+    </div>
+  </section>;
 }
 
 export function Collection({ state, onCard, reducedMotion }: { state: Snapshot; onCard: (id: string) => void; reducedMotion: boolean }) {
@@ -46,8 +57,8 @@ export function Collection({ state, onCard, reducedMotion }: { state: Snapshot; 
     <div className="segmented" aria-label={ru.sortLabel}>{(['newest', 'rarest'] as const).map(value => <button key={value} className={sort === value ? 'selected' : ''} aria-pressed={sort === value} onClick={() => setSort(value)}>{ru[value]}</button>)}</div>
     {!chicks.length ? <div className="empty-state"><h2>{ru.emptyCollection}</h2><p>{ru.emptyCollectionBody}</p></div> : <div className="collection-grid">
       {chicks.map(chick => <button className={`collection-card ${chick.id === state.player.activeChickId ? 'is-active' : ''}`} key={chick.id} onClick={() => onCard(chick.id)}>
-        <span className={`rarity-dot ${chick.rarity}`} aria-label={ru.rarities[chick.rarity]} /><ChickArt appearanceId={chick.appearanceId} stage={chick.stage} size={140} reducedMotion={reducedMotion} state={chick.sleepUntil && chick.sleepUntil > state.serverNow ? 'sleep' : 'idle'} />
-        <strong>{chick.name}</strong><span>{APPEARANCE_LABELS[chick.appearanceId] ?? chick.appearanceId}</span><small className={chick.id === state.player.activeChickId ? 'active-marker' : ''}>{chick.id === state.player.activeChickId ? ru.active : ru.resting}</small>
+        <span className={`rarity-dot ${chick.rarity}`} aria-label={ru.rarities[chick.rarity]} /><ChickArt chick={chick} size={140} animate={false} reducedMotion={reducedMotion} pose={chick.sleepUntil && chick.sleepUntil > state.serverNow ? 'sleep' : 'idle'} />
+        <strong>{chick.name}</strong><span>{getAppearanceLabel(chick)}</span><small className={chick.id === state.player.activeChickId ? 'active-marker' : ''}>{chick.id === state.player.activeChickId ? ru.active : ru.resting}</small>
       </button>)}
     </div>}
     <p className="screen-footnote">{ru.restHint}</p>
@@ -59,9 +70,9 @@ export function ChickCard({ chick, state, now, busy, reducedMotion, onRename, on
   const active = chick.id === state.player.activeChickId;
   return <section className="bird-screen">
     <p className="eyebrow">{ru.birdCard}</p><h1>{chick.name}</h1>
-    <div className="card-art"><ChickArt appearanceId={chick.appearanceId} stage={chick.stage} state={isSleeping(chick, now) ? 'sleep' : 'idle'} size={240} reducedMotion={reducedMotion} /></div>
+    <div className="card-art"><ChickArt chick={chick} pose={isSleeping(chick, now) ? 'sleep' : 'idle'} size={240} animate={!reducedMotion} reducedMotion={reducedMotion} /></div>
     <div className="bird-tags"><span>{ru.stage[chick.stage]}</span><span className={`rarity-tag ${chick.rarity}`}>{ru.rarities[chick.rarity]}</span></div>
-    <dl className="bird-facts"><div><dt>{ru.appearance}</dt><dd>{APPEARANCE_LABELS[chick.appearanceId] ?? chick.appearanceId}</dd></div><div><dt>{ru.age}</dt><dd>{ageText(now - chick.bornAt)}</dd></div><div><dt>{ru.born}</dt><dd>{birthText(chick.bornAt)}</dd></div><div className="id-fact"><dt>{ru.birdId}</dt><dd>{chick.id}</dd></div></dl>
+    <dl className="bird-facts"><div><dt>{ru.appearance}</dt><dd>{getAppearanceLabel(chick)}</dd></div><div><dt>{ru.age}</dt><dd>{ageText(now - chick.bornAt)}</dd></div><div><dt>{ru.born}</dt><dd>{birthText(chick.bornAt)}</dd></div><div className="id-fact"><dt>{ru.birdId}</dt><dd>{chick.id}</dd></div></dl>
     <Needs chick={chick} />
     <section className="quiet-card growth-note"><h2>{ru.growthTitle}</h2><p>{chick.stage === 'baby' ? ru.growthBaby : chick.stage === 'teen' ? ru.growthTeen : ru.growthAdult}</p><span>{ru.careCycles(chick.careMilestones.length)}</span></section>
     {editing ? <NameForm initial={chick.name} busy={busy} onSave={name => { onRename(name); }} /> : <button className="button secondary" disabled={busy} onClick={() => setEditing(true)}>{ru.rename}</button>}

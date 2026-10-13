@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { BALANCE, APPEARANCES, normalizeName, selectAppearance } from '../tgcloud/lib/domain.js';
 import { fixture, operation } from './helpers';
 
-describe('GDD balance and original appearances', () => {
-  it('has exact baseline and 12 uniform-within-category appearances', () => {
-    expect(BALANCE).toMatchObject({ eggCost: 6, sleepDurationMs: 2700000, incubationMs: 10800000, careCooldownMs: 14400000, rewardCooldownMs: 72000000, miniGameDurationMs: 25000, minNeed: 35 });
+describe('GDD balance and V2 appearance presets', () => {
+  it('has exact baseline and 12 original coherent palette presets', () => {
+    expect(BALANCE).toMatchObject({ eggCost: 6, sleepDurationMs: 2700000, incubationMs: 10800000, careCooldownMs: 14400000, rewardCooldownMs: 72000000, miniGameMinDurationMs: 2000, minNeed: 35 });
     expect(APPEARANCES).toHaveLength(12);
     for (const [rarity, count, weight] of [['common', 6, 70], ['uncommon', 4, 25], ['rare', 2, 5]]) {
       const entries = APPEARANCES.filter(a => a.rarity === rarity);
@@ -79,6 +79,6 @@ describe('care, server clock, growth and offline state', () => {
     const f = fixture(); f.roll(.999); const r = await f.call('bootstrap'); const request = operation({ eggId: r.state.egg.id });
     const hatched = await f.call('hatchEgg', request); f.roll(0);
     const repeat = await f.call('hatchEgg', operation({ eggId: r.state.egg.id }));
-    expect(repeat.state.chicks[0].appearanceId).toBe('gold'); expect(repeat.result.chickId).toBe(hatched.result.chickId);
+    expect(repeat.state.chicks[0].appearanceId).toBe('amber-night'); expect(repeat.result.chickId).toBe(hatched.result.chickId);
   });
 });

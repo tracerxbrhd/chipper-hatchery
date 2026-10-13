@@ -9,11 +9,11 @@ it('durable purchase receipt remains valid after hatch releases the slot', async
   const replay = await f.call('buyEgg', request); expect(replay.ok).toBe(true); expect(replay.state.egg).toBe(null); expect(replay.state.player.feathers).toBe(6); expect(replay.state.chicks).toHaveLength(2);
 });
 it('old finish replay after 20 hours never awards another feather', async () => {
-  const f = fixture(); await f.initial(); const start = await f.call('startMiniGame', operation()); f.advance(25000);
-  const finish = operation({ attemptId: start.result.attemptId, score: 10 }); await f.call('finishMiniGame', finish); f.advance(21 * BALANCE.hourMs);
-  const replay = await f.call('finishMiniGame', finish); expect(replay.state.player.feathers).toBe(1);
-  const freshKey = await f.call('finishMiniGame', operation({ attemptId: start.result.attemptId, score: 10 })); expect(freshKey.state.player.feathers).toBe(1);
-  expect((await f.call('finishMiniGame', operation({ attemptId: start.result.attemptId, score: 11 }))).error.code).toBe('ATTEMPT_ALREADY_FINISHED');
+  const f = fixture(); await f.initial(); const start = await f.call('startFlapsRun', operation()); f.advance(25000);
+  const finish = operation({ runId: start.result.runId, score: 10, endReason: 'crash' }); await f.call('finishFlapsRun', finish); f.advance(21 * BALANCE.hourMs);
+  const replay = await f.call('finishFlapsRun', finish); expect(replay.state.player.feathers).toBe(1);
+  const freshKey = await f.call('finishFlapsRun', operation({ runId: start.result.runId, score: 10, endReason: 'crash' })); expect(freshKey.state.player.feathers).toBe(1);
+  expect((await f.call('finishFlapsRun', operation({ runId: start.result.runId, score: 11, endReason: 'crash' }))).error.code).toBe('ATTEMPT_ALREADY_FINISHED');
 });
 it('a recreated service restores the same state from SQLite', async () => {
   const f = fixture(); const chickId = await f.initial(); await f.call('renameChick', operation({ chickId, name: 'Север' }));
@@ -25,9 +25,9 @@ it('backward server clock never duplicates decay or rewards', async () => {
   f.advance(-2 * BALANCE.hourMs); const after = await f.call('getHome'); expect(after.state.serverNow).toBe(before.state.serverNow); expect(after.state.chicks).toEqual(before.state.chicks);
 });
 it('an abandoned attempt cannot be revived by replaying its start receipt', async () => {
-  const f = fixture(); await f.initial(); const op = operation(); const first = await f.call('startMiniGame', op); await f.call('startMiniGame', operation());
-  const replay = await f.call('startMiniGame', op); expect(replay.result.attemptId).toBe(first.result.attemptId); f.advance(25000);
-  expect((await f.call('finishMiniGame', operation({ attemptId: first.result.attemptId, score: 2 }))).error.code).toBe('ATTEMPT_CANCELLED');
+  const f = fixture(); await f.initial(); const op = operation(); const first = await f.call('startFlapsRun', op); await f.call('startFlapsRun', operation());
+  const replay = await f.call('startFlapsRun', op); expect(replay.result.runId).toBe(first.result.runId); f.advance(25000);
+  expect((await f.call('finishFlapsRun', operation({ runId: first.result.runId, score: 2, endReason: 'crash' }))).error.code).toBe('ATTEMPT_CANCELLED');
 });
 it('care window includes exactly 30 minutes and reward includes exactly 20 hours', async () => {
   const f = fixture(); const chickId = await f.initial(); await f.call('careAction', operation({ chickId, action: 'feed' })); f.advance(BALANCE.careCycleWindowMs);
@@ -36,13 +36,13 @@ it('care window includes exactly 30 minutes and reward includes exactly 20 hours
   const second = await f.call('careAction', operation({ chickId, action: 'play' })); expect(second.result.rewarded).toBe(true); expect(second.state.chicks[0].careMilestones).toHaveLength(2);
 });
 it.each([-1, 501, 1.5, '1', null])('rejects invalid mini-game score %s', async score => {
-  const f = fixture(); await f.initial(); const s = await f.call('startMiniGame', operation()); f.advance(25000);
-  expect((await f.call('finishMiniGame', operation({ attemptId: s.result.attemptId, score }))).error.code).toBe('INVALID_SCORE');
+  const f = fixture(); await f.initial(); const s = await f.call('startFlapsRun', operation()); f.advance(25000);
+  expect((await f.call('finishFlapsRun', operation({ runId: s.result.runId, score, endReason: 'crash' }))).error.code).toBe('INVALID_SCORE');
 });
 it('rate limits abandoned attempts without cancelling the last allowed round', async () => {
   const f = fixture(); await f.initial(); let last;
-  for (let i = 0; i < 6; i++) last = await f.call('startMiniGame', operation());
-  const refusal = await f.call('startMiniGame', operation()); expect(refusal.error.code).toBe('RATE_LIMITED');
-  f.advance(25000); expect((await f.call('finishMiniGame', operation({ attemptId: last.result.attemptId, score: 1 }))).ok).toBe(true);
-  f.advance(35000); expect((await f.call('startMiniGame', operation())).ok).toBe(true);
+  for (let i = 0; i < 6; i++) last = await f.call('startFlapsRun', operation());
+  const refusal = await f.call('startFlapsRun', operation()); expect(refusal.error.code).toBe('RATE_LIMITED');
+  f.advance(25000); expect((await f.call('finishFlapsRun', operation({ runId: last.result.runId, score: 1, endReason: 'crash' }))).ok).toBe(true);
+  f.advance(35000); expect((await f.call('startFlapsRun', operation())).ok).toBe(true);
 });

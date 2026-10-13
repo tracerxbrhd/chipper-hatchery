@@ -1,0 +1,10 @@
+{
+  "kind": "local Chromium browser smoke, not real-device FPS proof",
+  "durationMs": 30000,
+  "initialNodes": 166,
+  "finalNodes": 166,
+  "frames": 1800,
+  "frameIntervalP95Ms": 16.799999999999272,
+  "longTaskCount": 0,
+  "maxLongTaskMs": 0
+}

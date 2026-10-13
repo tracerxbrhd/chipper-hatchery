@@ -47,6 +47,7 @@ export async function call(method: Method, params: Record<string, unknown> = {})
 
 let audioContext: AudioContext | null = null;
 export function playFeedback(kind: string, sound = false, haptics = true) {
+  if ((typeof document !== 'undefined' && document.hidden) || webApp()?.isActive === false) return;
   if (haptics) { try { webApp()?.HapticFeedback?.impactOccurred(kind === 'play' ? 'medium' : 'light'); } catch { /* Haptics are optional. */ } }
   if (!sound) return;
   try {

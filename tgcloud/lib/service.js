@@ -1,6 +1,7 @@
 import {
   GameError, clone, createInitialState, isReadMethod, validateRequest,
   requestFingerprint, reconcileState, snapshot, applyMutation,
+  validateStateVersion,
 } from './domain.js';
 
 /** ctx.initData is verified by Telegram before an endpoint is invoked. */
@@ -16,7 +17,7 @@ export function verifiedTelegramId(ctx) {
 /** Cosmetic randomness is server-only and injectable in deterministic tests. */
 export function serverRandom() {
   // The documented V8 SDK has no cryptographic random API. There are no money,
-  // paid draws or public rankings in 0.1; a server-side cosmetic draw suffices.
+  // paid draws or public rankings; a server-side cosmetic draw suffices.
   return Math.random();
 }
 
@@ -67,6 +68,7 @@ export function createGameService({ store, now = Date.now, random = serverRandom
           if (row.state.player.telegramId !== telegramId || !Number.isSafeInteger(row.revision) || row.revision < 0) {
             throw new Error('Invalid aggregate ownership');
           }
+          validateStateVersion(row.state);
           const state = reconcileState(clone(row.state), Math.max(timestamp, row.state.updatedAt));
           const serverNow = state.updatedAt;
           let result;

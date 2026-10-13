@@ -2,7 +2,7 @@
 
 **Project:** `tracerxbrhd/chipper-hatchery`  
 **Telegram:** `@chipperhatcherybot` · Bot/App ID `8924974998` (перед любым deploy подтвердить в живом CLI)  
-**Target:** реализовать, протестировать и **опубликовать живую beta 0.2** на существующем Telegram Serverless без потери данных 0.1.  
+**Target:** реализовать, протестировать и **опубликовать живую beta 0.2** на существующем Telegram Serverless с новым дизайном V2 и разрешённым однократным сбросом игрового прогресса.
 **Model/orchestration:** использовать текущую мощную модель Codex как технического руководителя и настоящих субагентов, если доступны.  
 **Git:** работать в `feature/chipper-v0.2` от актуального `main`, в конце один PR в `main`, **не мержить**.  
 **Язык UI, документации и отчёта:** русский.  
@@ -12,19 +12,19 @@
 
 Ты — principal engineer, lead game developer, арт-техдиректор и orchestrator проекта Chipper. Ранее 0.1 была реально опубликована на Telegram Serverless. Пользователь предоставил замечания к живой игре; не останавливайся на обсуждении/макетах: **доведи 0.2 до функционального релиза**, сам выдели подзадачи, параллельные потоки и в конце интегрируй их.
 
-Разрешение владельца на релиз: **можно сразу деплоить проверенную версию 0.2 прямо в действующий `@chipperhatcherybot`, без отдельного ожидания подтверждения.** Однако запрещены разрушение сохранений, рискованные миграции, `push --force`, `reset`, работа с чужими ботами, секреты в логах и мердж PR без владельца.
+Разрешение владельца на релиз: **можно сразу деплоить проверенную версию 0.2 прямо в действующий `@chipperhatcherybot`, без отдельного ожидания подтверждения.** Также разрешено ровно один раз очистить все игровые записи `chipper_players` после проверки App ID 8924974998 и @chipperhatcherybot. Запрещены удаление системных данных/бота/секретов, непроверенные destructive-команды, `push --force`, работа с чужими ботами и merge PR.
 
 ## 1. Прочитать ПОЛНОСТЬЮ до работы
 
 В порядке приоритета при коллизиях:
 
 1. `DOCS/GDD_0.2.md` — утверждённые продуктовые требования 0.2 и границы.
-2. `DOCS/CHICK_SYSTEM_0.2.md` — параметры внешности, анимации, legacy V1 и Living World.
+2. `DOCS/CHICK_SYSTEM_0.2.md` — полностью новая внешность V2, анимации и Living World.
 3. `DOCS/CHIPPSTER_FLAPS_0.2.md` — **правильное имя Chippster Flaps**, game design, физика, API, награды.
-4. `DOCS/ARCHITECTURE_0.2.md` — текущая кодовая база, схема состояния, Telegram viewport, перенос без потери данных, деплой.
+4. `DOCS/ARCHITECTURE_0.2.md` — текущая кодовая база, модель V2, Telegram viewport, однократный clean-start reset и деплой.
 5. `DOCS/ACCEPTANCE_0.2.md` — требования для тестов, приёмки и качества, в т.ч. три аккаунта.
 6. `AGENTS.md`, `DOCS/tgcloud-sdk.md`, `DOCS/CONTRACT_0.1.md`, `DOCS/DEPLOYMENT_0.1.md`.
-7. `DOCS/GDD_0.1.md`, `DOCS/ACCEPTANCE_RESULT_0.1.md` и существующие тесты для сохранения 0.1-поведения.
+7. `DOCS/GDD_0.1.md`, `DOCS/ACCEPTANCE_RESULT_0.1.md` и существующие тесты для проверки неизменившихся правил ухода и экономики.
 
 Изучи реальные исходники `src/**`, `tgcloud/**`, `tests/**`, `package.json`, конфигурацию cloud, существующий GitHub PR #1. Перед изменениями `git status`, `git log`, `git branch`. Ни один документ 0.1 не переписывать под код 0.2.
 
@@ -35,10 +35,10 @@
 Открыв beta Mini App, пользователь видит:
 - компактный glass HUD и **фиксированную домашнюю игровую сцену**, без нежелательного вертикального свайпа / скролла;
 - цыплёнка, который **гуляет по 2.5D-площадке**, двигает лапками, поворачивается, моргает, смотрит на пользователя, реагирует на корм/игру/сон и нажатие по полю;
-- **разных по формам, а не только цвету, птиц**: голова, тело, хвост, крылья, лапки, клюв, узоры, многоцветное оперение, все три стадии; прежние экземпляры 0.1 остаются прежними;
+- **разных по формам, а не только цвету, птиц**: голова, тело, хвост, крылья, лапки, клюв, узоры, многоцветное оперение, все три стадии; прежний художественный дизайн полностью заменён;
 - 5-позиционный нижний glass-dock `Коллекция — Инкубатор — [ДОМ] — Активности — Профиль`; центральная вкладка Дом выделена, переключения плавно анимированы;
 - на вкладке Активности **Chippster Flaps**, а не «Собери зёрнышки»: current active chick летает между авторскими препятствиями, тап = flap, есть score, collision, personal best, быстрый restart, звуки/награда;
-- существующие системы ухода, редкостей, яиц, взросления, коллекции, серверного прогресса продолжают работать без потери данных;
+- системы ухода, редкостей, яиц, взросления и коллекции работают на новых аккаунтах после однократного сброса;
 - обновлённые русские подписи, состояние загрузки/offline/retry, dark/light/reduced motion.
 
 ## 3. Оркестрация — используйте настоящих субагентов
@@ -49,7 +49,7 @@
 Владение: `src/api/telegram.ts`, `src/navigation/**`, `src/design/**`, `src/app.css`. Feature-detect `disableVerticalSwipes`, stable viewport, safe area, fixed scene layout, 5-tab dock, стеклянная дизайн-система, анимации маршрутов, a11y.
 
 **Agent B — Chick System 2.0 / Art.**  
-Владение: `src/chicks/**`, `src/components/ChickArt.tsx`, `src/art.css`. Модульные морфологические варианты, anchors, renderer V1/V2, 3 возраста, позы, общий avatar/sprite adapter для Дома/Flaps, dev preview gallery. Техническое качество важнее числа «рандомных палитр».
+Владение: `src/chicks/**`, `src/components/ChickArt.tsx`, `src/art.css`. Модульные морфологические варианты, anchors, renderer V2, 3 возраста, позы, общий avatar/sprite adapter для Дома/Flaps, dev preview gallery. Техническое качество важнее числа «рандомных палитр».
 
 **Agent C — Living World / Home.**  
 Владение: `src/world/**`, `src/screens/PetScreens.tsx` (координировать с интегратором создание Profile, чтобы не возникало файловых конфликтов). 2.5D-площадка, real grounded walk/gait, локальная state-machine, реакция по тапу, care buttons, низкие экраны.
@@ -58,10 +58,10 @@
 Владение: `src/games/flaps/**`, `src/screens/GameScreens.tsx` и отдельные тесты engine в согласованной собственной папке. Physics/touch/collisions/score/result/restart/hidden-state, original obstacles, sprite текущей птицы, профилирование. Не меняет серверную экономику самостоятельно.
 
 **Agent E — Backend / save format / migrations.**  
-Владение: `tgcloud/**`. Версия внешности V2 server-only, old V1 fallback, CAS/receipt, `startFlapsRun`/`finishFlapsRun`, общий 20ч cooldown, anti-abuse, personal best и retrocompatibility, bounded-attempts или безопасная политика storage роста. **Не изменять текущую таблицу и данные деструктивно**.
+Владение: `tgcloud/**`. Версия внешности V2 server-only, без legacy renderer, CAS/receipt, `startFlapsRun`/`finishFlapsRun`, общий 20ч cooldown, anti-abuse, personal best и новые schemaVersion=2 сохранения, bounded-attempts или безопасная политика storage роста. Обычные запросы и deploy не сбрасывают данные. Единственная административная очистка выполняется через проверенный reset helper и durable release marker.
 
 **Agent F — QA / regressions / release audit.**  
-Владение: `tests/**`, `scripts/**`, UI visual regression fixtures и отчёты QA (при согласованной интеграции). Проверка всех P0 из ACCEPTANCE, симулированной конкуренции, контрактов, legacy-state, mobile viewport, perf, secrets, live checklist.
+Владение: `tests/**`, `scripts/**`, UI visual regression fixtures и отчёты QA (при согласованной интеграции). Проверка всех P0 из ACCEPTANCE, симулированной конкуренции, контрактов, reset/fresh-onboarding, mobile viewport, perf, secrets, live checklist.
 
 **YOU — Integrator / release owner.**  
 Владение: `src/App.tsx`, `src/api/client.ts`, `src/types.ts`, `src/main.tsx`, `src/i18n.ts`, `src/screens/ProfileScreen.tsx`, `package.json`, CI, README, AGENTS и итоговые документы. Ты определяешь контракты до параллельной работы, принимаешь интеграционные решения и лично запускаешь final quality gate/deploy/PR.
@@ -96,15 +96,15 @@
 ### Phase 2 — integration
 
 - End-to-end UX: welcome/egg → home walk → feed/play/sleep → collection → activate new → home → Chippster Flaps → result → profile → back → incubator/hatch.
-- Бывшие птицы 0.1 с полным набором legacy данных работают без изменения генов.
+- После reset бывшие аккаунты 0.1 получают новое onboarding, нулевой баланс и новое стартовое яйцо.
 - Новые птицы получают v2 genes сервером ровно один раз; в UI их возраст и окраска меняются корректно при взрослении.
-- `miniGameRewardAt` остаётся общей глобальной границей. У Flaps нет прежнего фиксированного правила «ждать 25 секунд до game-over».
+- `miniGameRewardAt` задаёт общий 20-часовой cooldown Flaps после чистого старта. У Flaps нет прежнего фиксированного правила «ждать 25 секунд до game-over».
 - Приложение не выглядит как стандартная dashboard форма: минималистичные чистые композиции, glass только где нужен, character-first сцена.
 
 ### Phase 3 — automated and real UI quality gate
 
 - `npm ci`, `npm run check`, `npm run test:ui`, тесты нового engine и инвариантов. Убедись, что последний коммит с исходниками покрыт этими запусками.
-- Скриншоты mobile light/dark + legacy V1 + несколько максимально разных V2 + Flaps ready/play/crash/result; зафиксируй их в `DOCS/qa/0.2/`.
+- Скриншоты mobile light/dark + несколько максимально разных V2 + Flaps ready/play/crash/result; зафиксируй их в `DOCS/qa/0.2/`.
 - Проверка overflow, safe areas, false touches, анимаций, accessible labels, touch-first input. Никаких визуальных дефектов, видимых невооружённым глазом.
 - Конкурентные вызовы сохраняют инварианты: один profile, один hatch, один reward, один finish, idempotent operations, foreign IDs refused.
 - Если реальный UI test без Telegram initData, это browser mock. Не выдавай его за живой подписанный Telegram запуск.
@@ -114,11 +114,11 @@
 **Владелец прямо разрешил live deploy в существующий бот**, но только после Phase 3 с зелёными блокирующими проверками.
 
 1. Чётко определи бот/app ID, baseline cloud revision и текущие серверные файлы (read-only `tgcloud fetch/status/diff`).
-2. Сохрани известный работающий source SHA и процедуру кодового rollback без изменения БД.
+2. Сохрани известный работающий source SHA и процедуру исправления/кодового rollback, совместимого с V2, без повторного сброса БД.
 3. Проверь production build и отсутствие dev mock/secret values.
 4. Сделай безопасную проверку миграций **если они требуются** (`migrate --dry-run`, а для отличия local/deployed при необходимости `--local`). Применять только ожидаемые `--safe` после согласованного `push`.
 5. Если cloud не синхронизирован или обнаружено неожиданное удаление modules/table, останови именно деплой, не force.
-6. Деплой `npx tgcloud push` в **того же** `@chipperhatcherybot`. Для Windows proxy используй проверенные рекомендации `DOCS/DEPLOYMENT_0.1.md`, не считывай/не печатай токен.
+6. После read-only schema/identity проверки выполни неразрушающий reset helper `--prepare` (точные table/trigger без INSERT/DELETE), и только при успехе опубликуй `npx tgcloud push`. Затем однократный reset `--apply` и повторный `--dry-run`. Отказ prepare блокирует публикацию до замены действующего кода. Temporary reset endpoint не размещай в deploy. Бот только **@chipperhatcherybot**; для Windows proxy следуй проверенным рекомендациям `DOCS/DEPLOYMENT_0.1.md`, без раскрытия токена.
 7. Проверка статуса, манифеста модулей, сайта, отсутствия production dev code, реального URL, доступности Main Mini App. По возможности сделай безопасные signed live actions только на своём разрешённом тестовом аккаунте. Не подделывай A/B/C.
 8. Если обнаружена тяжёлая production регрессия, выполни безопасный rollback к записанному working code, без отката/обнуления БД; если rollback невозможен без риска сохранений — не выполняй рискованных действий, честно обозначь блокер.
 
@@ -128,18 +128,18 @@
 
 - Открой один PR `feature/chipper-v0.2 → main`. Не сливай его.
 - Оформи `DOCS/IMPLEMENTATION_0.2.md`, `DOCS/ACCEPTANCE_RESULT_0.2.md`, обнови README/AGENTS если требуются реальные инструкции.
-- В PR: что сделано, что сознательно не сделано, source SHA, cloud release revision/url, schema changes (если есть), все тесты и флаги, регрессия legacy 0.1, known issues, чеклист владельца с несколькими аккаунтами.
+- В PR: что сделано, что сознательно не сделано, source SHA, cloud release revision/url, schema changes (если есть), все тесты и флаги, регрессия неизменившихся правил и fresh onboarding, known issues, чеклист владельца с несколькими аккаунтами.
 - **Не закрывай работу после одних документов, scaffold или 80% P0**, если можешь продолжать. Цель: готовое приложение.
 
 ## 5. Hard constraints
 
-### No data loss
+### Единственный разрешённый чистый старт
 
-- НЕ удаляй таблицу `chipper_players`, не сбрасывай `state_json` или счётчики пёрышек, не переролливай старые appearanceId.
+- Таблицу `chipper_players` сохраняй. Все старые игровые строки удали ровно один раз через `node scripts/reset-game-v0.2.mjs --apply`: проверенная идентичность, фактическая схема, атомарная очистка + persistent marker. По умолчанию helper работает read-only (`--dry-run`). Системные/чужие ресурсы сохраняются.
 - НЕ меняй устройство серверного CAS без доказательной необходимости. Новое поле рекорда/genes должно входить в ту же атомарную запись вместе с receipt/reward.
 - НЕ выбрасывай старые `operationId` receipts без корректной replay-safe стратегии; длинная история — технический долг, но наивное `slice(-50)` может вернуть двойные покупки.
 - НЕ превращай случайный seed V2 в единственный источник генетики. Сохрани полную версионированную конфигурацию.
-- Схема legacy поля `appearanceId` по-прежнему есть; V2 добавляет optional поля без breaking change.
+- `schemaVersion=2`, `appearanceVersion=2` и полные V2 genes обязательны для новых аккаунтов. Legacy migration/renderer не нужен; до reset старые агрегаты отклоняются с `RESET_REQUIRED`.
 
 ### Telegram and UX
 
@@ -148,7 +148,7 @@
 - 5-вкладочный dock, Дом на позиции 3. У Flaps dock скрыт.
 - Liquid Glass имеет fallback, reduced-motion, dark/light, доступность. Не делать 60 раз в секунду CSS/backdrop filter recalculation.
 - Не подключать Three.js/WebGL/физические движки ради маленькой 2.5D площадки. Используй лёгкую сцену/SVG/CSS и Canvas2D для Flaps.
-- Питомец в Flaps и в Home действительно совпадает по v1/v2 облику; для старых птиц не допускать внешней замены generic bird.
+- Питомец в Flaps и Home совпадает по V2 genes, стадии и индивидуальному силуэту; generic sprite недопустим.
 
 ### Security and ethics
 
@@ -167,7 +167,7 @@
 3. **Субагенты:** реальное распределение и артефакты; если не было API субагентов — так и сказать.
 4. **Функционал:** что работает для каждого P0, что добавлено из P1.
 5. **Тесты:** точные команды, число PASS/FAIL, screenshots/art gallery; честный live/mock distinction.
-6. **Serverless:** идентификация бота, фактический URL/revision, способ deploy, нужны ли schema migrations, preserved saved data.
+6. **Serverless:** идентификация бота, фактический URL/revision, способ deploy, нужны ли schema migrations, фактический статус однократного reset и новые сохранения V2.
 7. **Приёмка владельца:** сценарии A/B/C, A1/A2, отдельные steps для Android.
 8. **Дефекты/ограничения и rollback** с SHA и безопасными командами.
 

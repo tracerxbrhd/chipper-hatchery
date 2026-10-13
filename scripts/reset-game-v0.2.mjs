@@ -45,8 +45,11 @@ if (apply || prepare) {
   const successLine = 'No schema changes. Database is in sync with your local tgcloud/schema.js.';
   const allowedLines = new Set([successLine, '(diff computed against your local tgcloud/schema.js)']);
   const lines = output.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  // Pinned CLI 0.2.0 uses ora: when stdout/stderr are pipes, start() writes
+  // exactly this one progress line to stderr. It is not a schema warning.
+  const diagnostics = stripVTControlCharacters(schema.stderr ?? '').trim();
   if (!lines.includes(successLine) || lines.some(line => !allowedLines.has(line))
-    || stripVTControlCharacters(schema.stderr ?? '').trim()) {
+    || (diagnostics !== '' && diagnostics !== '- Checking schema...')) {
     throw new Error('RESET_SCHEMA_REVIEW_REQUIRED: review and finish only the expected additive receipt-table migration before preparing or applying the reset.');
   }
 }

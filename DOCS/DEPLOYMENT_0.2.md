@@ -4,6 +4,21 @@
 
 По предоставленному владельцем логу Termux уже опубликован source **7fd2486d3233e6f560620017d00f478568cacb4d**, **cloud revision 2**, URL **https://app8924974998.tgcloud.ai/**. Проверки этого checkpoint: 161/161 тестов PASS. Это не подтверждение завершённого reset.
 
+Последний подтверждённый владельцем шаг: recovery source **c2f87e5922b36ea616d3a90450532316edcacbad**, успешный **schema-only push, cloud revision 3**. Миграция добавила только объявленную receipt table: **added 1, skipped 0**. Последующий live dry-run PASS: appId=8924974998/@chipperhatcherybot, players=3, legacyPlayers=3, currentV2Players=0, jsonFunctionsReady=true, receiptTableReady=true, alreadyApplied=false, receipt=null. **Prepare/reset ещё не выполнены**: wrapper c2f87e5 отклонил штатную stderr строку CLI `- Checking schema...` до temporary endpoint/SQL-записей.
+
+Для текущего владельческого checkout таблица уже готова; **повторный push/migrate не требуется**. После перехода на новый SHA исправления wrapper выполните только:
+
+```bash
+npm run check &&
+node scripts/reset-game-v0.2.mjs --prepare &&
+node scripts/reset-game-v0.2.mjs --apply &&
+node scripts/reset-game-v0.2.mjs --dry-run &&
+npx tgcloud fetch &&
+npx tgcloud --no-pager status
+```
+
+Каждая команда запускается только после успеха предыдущей. Новый SHA — последний spinner-compatibility commit существующего PR#2/финальный отчёт. Изменения не затрагивают schema/gameplay runtime. До completed receipt и post-reset legacyPlayers0 очистка остаётся НЕ подтверждённой. Ниже сохранён полный runbook для ещё не подготовленной среды; не повторяйте выполненную миграцию текущего приложения.
+
 Прежний helper отказал на первом SQL-чтении `sqlite_master`: `Failed to prepare query [23] not authorized`. Во всех показанных вызовах dry-run/prepare/apply ошибка возникла после проверки getMe, но **до любых SQL-записей**. Следовательно, старый helper не удалял профили и не создавал marker/trigger. Старые schemaVersion=1 пока могут получать RESET_REQUIRED, а новые V2 аккаунты могли появиться после публикации и должны сохраниться.
 
 Исправленная процедура не читает каталог/PRAGMA и не создаёт DDL/triggers через SDK. Receipt table объявляется в `tgcloud/schema.js` и добавляется штатной миграцией CLI. Игровой DML использует только заранее известные таблицы/столбцы, JSON-capability probe и версионную границу удаления.
@@ -40,7 +55,7 @@ Diagnose через административный `tgcloud run` выполн�
 
 Проверьте точные App ID 8924974998 и @chipperhatcherybot. Неподдерживаемые SQL/JSON, повреждённые агрегаты, неизвестные schemaVersion или несогласованный владелец требуют разбора и блокируют изменяющие шаги. Не заменяйте их чтением системного каталога, прямым DDL, придуманными SQL CLI-командами или очисткой всей базы.
 
-На текущем этапе восстановления владельцу выдаётся только этот read-only шаг; результат diagnosis должен подтвердить применимость следующих фаз.
+Для среды без предыдущей diagnosis сначала выполните только этот read-only шаг. В текущем владельческом приложении diagnosis/dry-run и миграция уже подтверждены указанным выше логом; продолжение — исправленный wrapper prepare/apply, без повторного push/migrate.
 
 ## 3. Добавить только объявленную receipt table
 
@@ -96,7 +111,7 @@ node scripts/reset-game-v0.2.mjs --dry-run
 
 Dry-run требует готовую receipt table. Он показывает проверенный бот, агрегированные количества старых schemaVersion=1 и новых schemaVersion=2 игроков и состояние фиксированной операции `chipper-v0.2-clean-start`. Повреждённые/неизвестные форматы и ownership mismatch блокируют prepare/apply. Уже завершённый receipt означает, что повторный сброс не нужен.
 
-Wrapper перед `--prepare` и `--apply` сам запускает supported `migrate --local --dry-run` pinned CLI0.2.0. После удаления ANSI разрешены только строка `No schema changes. Database is in sync with your local tgcloud/schema.js.` и необязательная `(diff computed against your local tgcloud/schema.js)`. Другой stdout, любой непустой stderr или ненулевой exit code прекращают операцию до создания temporary endpoint и записи в БД. При warnings/manual/pending schema или изменённом контракте CLI возникает RESET_SCHEMA_REVIEW_REQUIRED; guard не ослабляется ради продолжения.
+Wrapper перед `--prepare` и `--apply` сам запускает supported `migrate --local --dry-run` pinned CLI0.2.0. После удаления ANSI разрешены только строка `No schema changes. Database is in sync with your local tgcloud/schema.js.` и необязательная `(diff computed against your local tgcloud/schema.js)`. Stderr допускается пустой или ровно одна штатная progress-строка `- Checking schema...` после удаления VT/ANSI и trim. Повтор этой строки, warning/error/любой другой stderr, иной stdout или ненулевой exit code прекращают операцию до temporary endpoint и записи в БД. При warnings/manual/pending schema или изменённом контракте CLI возникает RESET_SCHEMA_REVIEW_REQUIRED; guard не ослабляется ради продолжения.
 
 Затем отдельно:
 

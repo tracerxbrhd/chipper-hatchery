@@ -1,13 +1,14 @@
 import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const fixtures = [];
 const schemaInSync = 'No schema changes. Database is in sync with your local tgcloud/schema.js.';
+const spinnerModule = pathToFileURL(resolve(projectRoot, 'node_modules/@tgcloud/cli/src/utils/spinner.js')).href;
 
 // This binary never imports the SDK, connects to Telegram, or executes SQL. It
 // records only the wrapper's command contract and temporary-file lifecycle.
@@ -113,7 +114,31 @@ describe('one-time reset wrapper CLI contract with isolated fake cloud commands'
 
   it('an exit-zero warning on stderr blocks execution even with the expected stdout success', () => {
     const f = fixture();
-    expectSchemaBlocked(f, f.run('apply', { CHIPPER_TEST_SCHEMA_STDERR: '\u001b[33mWarning: schema inspection was incomplete.\u001b[0m\n' }));
+    expectSchemaBlocked(f, f.run('apply', { CHIPPER_TEST_SCHEMA_STDERR: '- Checking schema...\n\u001b[33mWarning: schema inspection was incomplete.\u001b[0m\n' }));
+  });
+
+  it('duplicated progress remains an unknown stderr contract and blocks execution', () => {
+    const f = fixture();
+    expectSchemaBlocked(f, f.run('prepare', { CHIPPER_TEST_SCHEMA_STDERR: '- Checking schema...\n- Checking schema...\n' }));
+  });
+
+  it('accepts the real pinned CLI spinner output from a noninteractive child without cloud access', () => {
+    const captured = spawnSync(process.execPath, ['--input-type=module', '-e', `
+      import { createSpinner } from ${JSON.stringify(spinnerModule)};
+      const spinner = createSpinner('Checking schema...');
+      spinner.start();
+      spinner.stop();
+    `], { cwd: projectRoot, encoding: 'utf8' });
+    expect(captured.status).toBe(0);
+    expect(captured.stdout).toBe('');
+    expect(captured.stderr).toBe('- Checking schema...\n');
+    for (const mode of ['prepare', 'apply']) {
+      const f = fixture();
+      const result = f.run(mode, { CHIPPER_TEST_SCHEMA_STDERR: captured.stderr });
+      expect(result.status).toBe(0);
+      expect(f.calls().at(-1)).toMatchObject({ input: { mode }, endpointPresent: true });
+      expect(existsSync(f.endpoint)).toBe(false);
+    }
   });
 
   it('unknown extra stdout blocks execution even when an accepted success line is also present', () => {
@@ -123,7 +148,10 @@ describe('one-time reset wrapper CLI contract with isolated fake cloud commands'
 
   it.each(['prepare', 'apply'])('an inspected clean schema runs %s with the committed SHA and cleans up its temporary endpoint', mode => {
     const f = fixture();
-    const result = f.run(mode, { CHIPPER_TEST_SCHEMA_OUTPUT: `\u001b[2m(diff computed against your local tgcloud/schema.js)\u001b[0m\r\n\u001b[32m${schemaInSync}\u001b[0m\r\n` });
+    const result = f.run(mode, {
+      CHIPPER_TEST_SCHEMA_OUTPUT: `\u001b[2m(diff computed against your local tgcloud/schema.js)\u001b[0m\r\n\u001b[32m${schemaInSync}\u001b[0m\r\n`,
+      CHIPPER_TEST_SCHEMA_STDERR: '\u001b[36m- Checking schema...\u001b[0m\r\n',
+    });
     expect(result.status).toBe(0);
     const calls = f.calls();
     expect(calls.map(call => call.args.slice(0, 2))).toEqual([

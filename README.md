@@ -29,17 +29,24 @@ npm run test:ui
 
 React + TypeScript + Vite; JavaScript Telegram Serverless SDK и SQLite. Официальный Serverless.call передаёт verified initData; ownership проверяет сервер. Все эффекты и receipts одного игрока коммитятся одним UPDATE с revision CAS.
 
-По логу владельца Termux **beta 0.2 опубликована**: source `7fd2486d3233e6f560620017d00f478568cacb4d`, cloud revision **2**, [https://app8924974998.tgcloud.ai/](https://app8924974998.tgcloud.ai/). На опубликованном checkpoint 161/161 unit PASS; новый recovery gate — 184/184 в 12 файлах, без изменения frontend assets. Это не подтверждает reset: прежний helper отказал на первом SELECT sqlite_master с `Failed to prepare query [23] not authorized`, до любых SQL-записей.
+По логу владельца Termux **beta 0.2 опубликована**: source `7fd2486d3233e6f560620017d00f478568cacb4d`, cloud revision **2**, [https://app8924974998.tgcloud.ai/](https://app8924974998.tgcloud.ai/). На опубликованном checkpoint 161/161 unit PASS; новый spinner-fix recovery gate — 186/186 в 12 файлах (33 reset + 12 wrapper), actual CLI progress probe PASS, без изменения frontend assets. Это не подтверждает reset: прежний helper отказал на первом SELECT sqlite_master с `Failed to prepare query [23] not authorized`, до любых SQL-записей.
 
 Владелец разрешил один clean start старого schemaVersion=1 прогресса. Исправленный recovery сохраняет V2 аккаунты, которые могли появиться после публикации. Каталоги/PRAGMA/runtimeDDL/triggers исключены; receipt table добавляется только штатным schema-only push/migrate --safe. Prepared план → atomic legacy-only DELETE → separate completed CAS; общей транзакции marker+DELETE нет. Replay/lost response безопасны при неизменной границе V1/V2 и только V2 writers после prepared. Последующие deploy не сбрасывают данные; admin endpoint не публикуется.
 
-Первый recovery шаг после перехода на точный SHA исправления — только read-only:
+Последний live шаг владельца: schema-only source `c2f87e5922b36ea616d3a90450532316edcacbad`, cloud revision 3; receipt migration added 1/skipped 0 и dry-run PASS:players=3/legacy 3/V2=0, JSON ready, receiptTableReady=true, receipt=null. Prepare отказал **до записи** из-за штатного CLI stderr `- Checking schema...`; новый wrapper принимает только empty либо одну точную эту progress-строку, остальные warnings/errors блокируются.
+
+После перехода на точный новый spinner-fix SHA повторный push/migrate не требуется. Продолжение с остановкой на первой ошибке:
 
 ```bash
-node scripts/reset-game-v0.2.mjs --diagnose
+npm run check &&
+node scripts/reset-game-v0.2.mjs --prepare &&
+node scripts/reset-game-v0.2.mjs --apply &&
+node scripts/reset-game-v0.2.mjs --dry-run &&
+npx tgcloud fetch &&
+npx tgcloud --no-pager status
 ```
 
-Полная staged процедура: [DEPLOYMENT_0.2.md](DOCS/DEPLOYMENT_0.2.md), текущая evidence/resetstatus — [ACCEPTANCE_RESULT_0.2.md](DOCS/ACCEPTANCE_RESULT_0.2.md). После diagnosis отдельно проверяется plan новойreceipt table, schema-only push/migration и No schema changes, затем dry-run/prepare/apply/dry-run. При ошибке остановиться; не запускать все changing phases одним multilinepaste. Новое onboarding бывших V1 подтверждается только после успешной очистки; свежий V2 прогресс сохраняется.
+Полная staged процедура: [DEPLOYMENT_0.2.md](DOCS/DEPLOYMENT_0.2.md), текущая evidence/resetstatus — [ACCEPTANCE_RESULT_0.2.md](DOCS/ACCEPTANCE_RESULT_0.2.md). Полный runbook для новой среды начинается с diagnosis и единственной safe receipt migration; эти фазы уже выполнены текущим владельческим приложением. При ошибке остановиться; не запускать все changing phases одним multilinepaste. Новое onboarding бывших V1 подтверждается только после успешной очистки; свежий V2 прогресс сохраняется.
 
 ## Приёмка
 

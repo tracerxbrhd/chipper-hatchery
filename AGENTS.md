@@ -3,7 +3,7 @@
 ## Chipper 0.2 project rules (0.1 regression required)
 
 - Current release contract: **DOCS/GDD_0.2.md**, DOCS/CHICK_SYSTEM_0.2.md, DOCS/CHIPPSTER_FLAPS_0.2.md, DOCS/ARCHITECTURE_0.2.md, DOCS/ACCEPTANCE_0.2.md, DOCS/CODEX_TASK_0.2.md. Read all before work. Historical DOCS/GDD_0.1.md, ACCEPTANCE_0.1.md and CONTRACT_0.1.md remain authoritative for **unchanged legacy behavior**. Never rewrite 0.1 historical results or specifications to fit new code.
-- UI, localization, reports: Russian. One active bird; old birds always survive and retain existing appearance. No death, punishment, payments, advertising, NFT, trade or referral systems. New mini-game name: **Chippster Flaps** (not Chippater, not Grain Game).
+- UI, localization, reports: Russian. One active bird; old birds always survive and retain existing appearance. No death, punishment, payments, advertising, NFT, trade or referral systems. New mini-game name: **Chippster Flaps**. Use exactly this spelling everywhere; legacy grain mini-game is removed from the 0.2 UI.
 - Runtime domain: tgcloud/lib/domain.js; BALANCE/APPEARANCES are authoritative until evolved compatibly to v0.2. Inject clocks/RNG in tests. Server-only economy, rarity, appearance selection, identity and timers. Preserve legacy v1 birds; V2 uses explicit versioned genes, not only a seed.
 - All player effects and durable receipts must commit in one per-player SQLite revision CAS. Never replace it with read/write queries lacking an atomic guard. Never prune receipts without replay-safe expiry design. Preserve old cooldown miniGameRewardAt when replacing mini-game.
 - Production identity only from verified ctx.initData.user.id. Reject foreign object IDs. Dev mock is compile-time DEV-only and never production auth.

@@ -1,15 +1,16 @@
 # AGENTS.md
 
-## Chipper 0.1 project rules
+## Chipper 0.2 project rules (0.1 regression required)
 
-- Canonical product rules: DOCS/GDD_0.1.md, verification DOCS/ACCEPTANCE_0.1.md, implementation contract DOCS/CONTRACT_0.1.md. Never rewrite baseline documents to fit code.
-- UI/report language is Russian. One active bird; no death, punishment, payments, advertising, NFT, trade or referral systems.
-- Runtime domain: tgcloud/lib/domain.js; BALANCE/APPEARANCES are authoritative. Inject clocks and RNG in tests. No client economy or timers as authority.
-- All player effects and durable receipts must commit in one per-player SQLite revision CAS. Never replace it with read/write queries lacking an atomic guard. Never prune receipts without replay-safe expiry design.
+- Current release contract: **DOCS/GDD_0.2.md**, DOCS/CHICK_SYSTEM_0.2.md, DOCS/CHIPPSTER_FLAPS_0.2.md, DOCS/ARCHITECTURE_0.2.md, DOCS/ACCEPTANCE_0.2.md, DOCS/CODEX_TASK_0.2.md. Read all before work. Historical DOCS/GDD_0.1.md, ACCEPTANCE_0.1.md and CONTRACT_0.1.md remain authoritative for **unchanged legacy behavior**. Never rewrite 0.1 historical results or specifications to fit new code.
+- UI, localization, reports: Russian. One active bird; old birds always survive and retain existing appearance. No death, punishment, payments, advertising, NFT, trade or referral systems. New mini-game name: **Chippster Flaps** (not Chippater, not Grain Game).
+- Runtime domain: tgcloud/lib/domain.js; BALANCE/APPEARANCES are authoritative until evolved compatibly to v0.2. Inject clocks/RNG in tests. Server-only economy, rarity, appearance selection, identity and timers. Preserve legacy v1 birds; V2 uses explicit versioned genes, not only a seed.
+- All player effects and durable receipts must commit in one per-player SQLite revision CAS. Never replace it with read/write queries lacking an atomic guard. Never prune receipts without replay-safe expiry design. Preserve old cooldown miniGameRewardAt when replacing mini-game.
 - Production identity only from verified ctx.initData.user.id. Reject foreign object IDs. Dev mock is compile-time DEV-only and never production auth.
-- npm run check, npm run test:ui; Node24 is required for actual local SQLite tests. Do not count mocked contexts/browser runs as live Telegram acceptance.
-- Work on feature/chipper-v0.1; PR into main, no merge. Deployment is push followed by reviewed safe migration. Verify exact bot first; never read credentials, reset cloud, force push or delete player data.
-- Updated results and deployment status: DOCS/ACCEPTANCE_RESULT_0.1.md. CLI SDK details below and DOCS/tgcloud-sdk.md.
+- npm run check, npm run test:ui; Node 24 is required for actual local SQLite tests. Do not count mocked contexts/browser runs as live Telegram acceptance. Test UI, physics, mobile viewport, legacy migration and concurrent rewards.
+- Work on feature/chipper-v0.2 from current main; **one PR into main, do not merge**. Owner explicitly authorizes **safe live beta deployment to existing @chipperhatcherybot** once P0 and security checks pass. Before cloud write verify bot identity, cloud status/diff and working rollback SHA. No destructive migrations, reset, force push, deleting player data or exposing credentials.
+- Telegram UI: feature-detect disableVerticalSwipes for the fixed Home/Flaps scenes; keep inner scrolling on Collection/Profile/edit fields. Home center tab in a five-tab dock, Liquid Glass with reduced-motion and contrast fallback. Preserve Telegram system header close.
+- Progress: implement and test all 0.2 P0, publish compatible beta if credentials/CLI accessible; report live status and exact test evidence in DOCS/ACCEPTANCE_RESULT_0.2.md, plus implementation in DOCS/IMPLEMENTATION_0.2.md. The 0.1 acceptance/deployment reports are historical baselines. CLI SDK details below and DOCS/tgcloud-sdk.md.
 
 Orientation for AI coding assistants (and humans) working in this project.
 This file is auto-loaded by Claude Code, Cursor, and similar tools — keep it short

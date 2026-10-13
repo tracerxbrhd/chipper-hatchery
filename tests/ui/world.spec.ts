@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fixture } from '../helpers.js';
+import { qaPath } from './fixtures';
 
 async function seedWorld(page: Page, extreme = false) {
   const f = fixture();
@@ -85,17 +86,27 @@ test('reduced motion uses a still world with functional care', async ({ page }) 
 
 test('Telegram deactivation and tab unmount stop the world RAF', async ({ page }) => {
   await seedWorld(page);
+  // The real SDK replaces window.Telegram.WebApp when its script loads. This
+  // lifecycle test owns its host and must stay independent of Telegram/CDN access.
+  await page.route('https://telegram.org/js/telegram-web-app.js', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* Telegram host supplied by this test. */' }));
   await page.addInitScript(() => {
     const listeners = new Map<string, Set<() => void>>();
     const app = { initData: '', colorScheme: 'light', isActive: true, ready() {}, expand() {}, onEvent(event: string, listener: () => void) { const group = listeners.get(event) ?? new Set(); group.add(listener); listeners.set(event, group); }, offEvent(event: string, listener: () => void) { listeners.get(event)?.delete(listener); } };
     let calls = 0;
     const originalRaf = window.requestAnimationFrame.bind(window);
     window.requestAnimationFrame = callback => { calls++; return originalRaf(callback); };
-    Object.assign(window, { Telegram: { WebApp: app }, __worldRafCalls: () => calls, __worldSetActive: (active: boolean) => { app.isActive = active; listeners.get(active ? 'activated' : 'deactivated')?.forEach(listener => listener()); } });
+    Object.assign(window, { Telegram: { WebApp: app }, __worldHost: app, __worldHostListenerCount: (event: string) => listeners.get(event)?.size ?? 0, __worldRafCalls: () => calls, __worldSetActive: (active: boolean) => { app.isActive = active; listeners.get(active ? 'activated' : 'deactivated')?.forEach(listener => listener()); } });
   });
   const calls = () => page.evaluate(() => (window as unknown as { __worldRafCalls(): number }).__worldRafCalls());
   await page.goto('/');
   await expect(page.locator('.living-world')).toHaveAttribute('data-running', 'true');
+  expect(await page.evaluate(() => {
+    const host = window as unknown as { Telegram: { WebApp: unknown }; __worldHost: unknown };
+    return host.Telegram.WebApp === host.__worldHost;
+  })).toBe(true);
+  // Initial data-running=true can render before effects attach. Wait for both
+  // the app shell and Living World to subscribe, then emit a real host event.
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __worldHostListenerCount(event: string): number }).__worldHostListenerCount('deactivated'))).toBeGreaterThanOrEqual(2);
   await page.evaluate(() => (window as unknown as { __worldSetActive(active: boolean): void }).__worldSetActive(false));
   await expect(page.locator('.living-world')).toHaveAttribute('data-running', 'false');
   const paused = await calls();
@@ -131,5 +142,5 @@ test('largest adult head and tail remain inside the scene at its walk boundaries
       expect(part.bottom).toBeLessThanOrEqual(rect.y + rect.height + 1);
     }
   }
-  await page.screenshot({ path: 'DOCS/qa/0.2/world-extreme-adult-320.png' });
+  await page.screenshot({ path: qaPath('world-extreme-adult-320.png') });
 });

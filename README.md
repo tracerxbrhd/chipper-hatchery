@@ -23,6 +23,8 @@ npm run test:ui
 
 `check` включает TypeScript, Serverless syntax/imports, ESLint, Vitest, production build, отсутствие dev-кода и secret patterns. Тесты используют настоящий node:sqlite, контролируемые часы/RNG, конкуренцию CAS, V2 genes, Flaps и однократный reset. UI browser/synthetic bridge проверяется отдельно от signed Telegram acceptance.
 
+Обычные UI tests пишут screenshots/perf в игнорируемый `test-results/qa`, оставляя Git clean для release. `CHIPPER_CAPTURE_QA=1` намеренно обновляет канонические `DOCS/qa/0.2`: используйте только при ручном обновлении evidence до commit, затем уберите переменную перед release checks.
+
 ## Сервер и выпуск
 
 React + TypeScript + Vite; JavaScript Telegram Serverless SDK и SQLite. Официальный Serverless.call передаёт verified initData; ownership проверяет сервер. Все эффекты и receipts одного игрока коммитятся одним UPDATE с revision CAS.

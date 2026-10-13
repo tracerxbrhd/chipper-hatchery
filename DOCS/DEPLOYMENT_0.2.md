@@ -19,6 +19,8 @@ npx tgcloud --no-pager status
 
 Node 24 обязателен для настоящих SQLite тестов. Зафиксируйте проверенный source SHA. `--prepare` и `--apply` reset helper откажут при dirty worktree. Не включайте `--debug`, не считывайте `.tgcloud` вручную и не помещайте CLI-токен в shell arguments/логи/PR.
 
+Обычный `npm run test:ui` сохраняет screenshots/perf в игнорируемый `test-results/qa`, поэтому не изменяет committed QA evidence и не мешает clean-worktree guard. Только для намеренного обновления канонических снимков **до commit** задайте `CHIPPER_CAPTURE_QA=1` (PowerShell: `$env:CHIPPER_CAPTURE_QA = '1'`), выполните UI tests, затем удалите переменную (`Remove-Item Env:CHIPPER_CAPTURE_QA`), проверьте и закоммитьте изменения `DOCS/qa/0.2`. Release checks запускаются без этой переменной.
+
 Если CLI сообщает `Not linked to a bot yet` / `No CLI access token found`, свяжите этот checkout интерактивной командой `npx tgcloud login`, используя **BotFather → @chipperhatcherybot → Serverless → CLI Access**. Для CI поддерживается `TGCLOUD_TOKEN` через защищённое окружение. Его значение не выводится.
 
 ## 2. Облако до любой записи

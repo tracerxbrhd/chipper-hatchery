@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { seed, finishOnboarding, enterFlaps, storageKey } from './fixtures';
+import { seed, finishOnboarding, enterFlaps, storageKey, qaPath } from './fixtures';
 
 const tabs = ['Коллекция', 'Инкубатор', 'Дом', 'Активности', 'Профиль'];
 
@@ -24,7 +24,7 @@ test('fresh V2 onboarding, care reward, reload, sleep, profile settings and incu
   await expect(page.locator('.app')).toHaveAttribute('data-motion', 'off');
   await page.getByRole('button', { name: 'Инкубатор', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Ещё 5 пёрышек', exact: true })).toBeDisabled();
-  await page.screenshot({ path: 'DOCS/qa/0.2/incubator-light.png' });
+  await page.screenshot({ path: qaPath('incubator-light.png') });
   const genes = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).state.chicks[0], storageKey);
   expect(genes.appearanceVersion).toBe(2); expect(genes.genes.geneSchemaVersion).toBe(1); expect(errors).toEqual([]);
 });
@@ -33,7 +33,7 @@ test('collection rename and activation preserve individual V2 genes in Home and 
   const row = await seed(page, { twoBirds: true }); await page.goto('/');
   await page.getByRole('button', { name: 'Коллекция', exact: true }).click();
   await expect(page.locator('.collection-card')).toHaveCount(2);
-  await page.screenshot({ path: 'DOCS/qa/0.2/collection-light.png' });
+  await page.screenshot({ path: qaPath('collection-light.png') });
   await page.locator('.collection-card').filter({ hasText: 'Цып №2' }).click();
   await page.getByRole('button', { name: 'Изменить имя', exact: true }).click();
   await page.getByLabel('Имя цыплёнка', { exact: true }).fill('Золотко');
@@ -63,18 +63,18 @@ test('ready ordinary egg hatches once and retains the current active bird', asyn
 
 test('Flaps pointer start, local collision, instant restart and leave without another reward', async ({ page }) => {
   await seed(page); await page.goto('/'); await enterFlaps(page);
-  await page.screenshot({ path: 'DOCS/qa/0.2/flaps-ready.png' });
+  await page.screenshot({ path: qaPath('flaps-ready.png') });
   await page.getByRole('application').click(); await expect(page.locator('.flaps-game')).toHaveAttribute('data-phase', 'playing');
-  await page.screenshot({ path: 'DOCS/qa/0.2/flaps-playing.png' });
+  await page.screenshot({ path: qaPath('flaps-playing.png') });
   await expect(page.locator('.flaps-result')).toBeVisible({ timeout: 15000 });
-  await page.screenshot({ path: 'DOCS/qa/0.2/flaps-result.png' });
+  await page.screenshot({ path: qaPath('flaps-result.png') });
   await expect(page.getByText('Полёт был короче 2 секунд.', { exact: false })).toBeVisible();
   await expect(page.getByLabel('0 пёрышек', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Ещё раз', exact: true }).click();
   await expect(page.locator('.flaps-game')).toHaveAttribute('data-phase', 'ready');
   await page.getByRole('application').click(); await page.getByRole('button', { name: 'Пауза', exact: true }).click();
   await expect(page.locator('.flaps-game')).toHaveAttribute('data-phase', 'paused');
-  await page.screenshot({ path: 'DOCS/qa/0.2/flaps-paused.png' });
+  await page.screenshot({ path: qaPath('flaps-paused.png') });
   await page.getByRole('button', { name: 'Продолжить полёт', exact: true }).click();
   await page.getByRole('button', { name: 'Выйти из Chippster Flaps' }).click();
   await expect(page.getByRole('alertdialog')).toBeVisible(); await page.getByRole('button', { name: 'Выйти из игры', exact: true }).click();
@@ -111,7 +111,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 360, height: 640 }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
     await page.getByRole('button', { name: 'Дом', exact: true }).click();
-    await page.screenshot({ path: `DOCS/qa/0.2/home-dark-${viewport.width}.png` });
+    await page.screenshot({ path: qaPath(`home-dark-${viewport.width}.png`) });
   });
 }
 
@@ -136,7 +136,7 @@ test('40 V2 birds scroll internally and preserve scroll when returning from deta
   await expect(page.locator('.screen-transition')).toHaveCount(1);
   await page.locator('.app-main').evaluate(element => { element.scrollTop = element.scrollHeight; });
   expect(await page.locator('.app-main').evaluate(element => element.scrollTop)).toBeGreaterThan(0);
-  await page.screenshot({ path: 'DOCS/qa/0.2/profile-dark.png' });
+  await page.screenshot({ path: qaPath('profile-dark.png') });
 });
 
 test('rename form stays accessible at keyboard-height viewport', async ({ page }) => {
@@ -167,9 +167,9 @@ test('dev gallery shows 90 V2 age variants, morphology controls and dark 320px p
   await page.getByLabel('Анимация', { exact: true }).uncheck(); await page.getByLabel('Поза', { exact: true }).selectOption('sleep');
   await page.getByLabel('Тема', { exact: true }).selectOption('dark'); await page.getByLabel('Ширина 320px', { exact: true }).check();
   await page.addStyleTag({ content: '.chick-gallery { position: static !important; overflow: visible !important; } html,body,#root { height: auto !important; overflow: visible !important; }' });
-  await page.screenshot({ path: 'DOCS/qa/0.2/chick-gallery-dark.png', fullPage: true });
+  await page.screenshot({ path: qaPath('chick-gallery-dark.png'), fullPage: true });
   await page.getByLabel('Поза', { exact: true }).selectOption('flap'); await page.getByLabel('Направление', { exact: true }).selectOption('left');
-  await page.getByLabel('Тема', { exact: true }).selectOption('light'); await page.screenshot({ path: 'DOCS/qa/0.2/chick-gallery-light.png', fullPage: true });
+  await page.getByLabel('Тема', { exact: true }).selectOption('light'); await page.screenshot({ path: qaPath('chick-gallery-light.png'), fullPage: true });
 });
 
 test('production outside Telegram denies mock and dev gallery query/storage', async ({ page }) => {
@@ -199,5 +199,5 @@ test('30-second Living World browser perf smoke keeps DOM and long tasks bounded
   expect(metrics.finalNodes).toBeLessThan(metrics.initialNodes + 30);
   expect(metrics.maxLongTaskMs).toBeLessThan(1500);
   expect(metrics.frames).toBeGreaterThan(300);
-  await writeFile('DOCS/qa/0.2/perf-smoke.json', JSON.stringify({ kind: 'local Chromium browser smoke, not real-device FPS proof', ...metrics }, null, 2));
+  await writeFile(qaPath('perf-smoke.json'), JSON.stringify({ kind: 'local Chromium browser smoke, not real-device FPS proof', ...metrics }, null, 2));
 });

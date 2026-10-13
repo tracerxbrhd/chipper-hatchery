@@ -1,10 +1,18 @@
 import { expect, type Page } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { fixture, operation } from '../helpers.js';
 import { BALANCE } from '../../tgcloud/lib/domain.js';
 import { CHICK_PRESETS, generateGenes } from '../../tgcloud/lib/chickGenes.js';
 import type { ApiResult, Method } from '../../src/types';
 
 export const storageKey = 'chipper-explicit-development-v2';
+/** Routine checks never rewrite committed visual evidence or dirty a release. */
+export function qaPath(name: string) {
+  const directory = process.env.CHIPPER_CAPTURE_QA === '1' ? 'DOCS/qa/0.2' : 'test-results/qa';
+  mkdirSync(directory, { recursive: true });
+  return join(directory, name);
+}
 export async function seed(page: Page, options: { twoBirds?: boolean; readyEgg?: boolean; manyBirds?: number } = {}) {
   const f = fixture(); await f.initial();
   if (options.twoBirds || options.readyEgg) {

@@ -22,11 +22,12 @@
 | npm ci | PASS; зависимости из исходного lockfile, изменена только версия самого проекта |
 | npm run check | PASS: TypeScript, runtime syntax/imports, ESLint, Vitest, Vite build, production isolation, secret/history patterns |
 | npm test | 161/161 PASS, 11 файлов |
+| GitHub Actions | Итог последнего HEAD — в [PR Checks](https://github.com/tracerxbrhd/chipper-hatchery/pull/2/checks). Первый прогон прошёл check и 32/33 UI; изолированный тестовый WebApp заменялся загруженным внешним SDK. Harness исправлен; 10/10 целевых повторов PASS, runtime не менялся |
 | Backend / CAS / экономика | 79 тестов: onboarding, V2 hatch, ownership, двойные операции, потерянные ответы, награды, 20ч, 2с, TTL, отказ старого протокола |
 | Reset / prepare SQLite | 20 тестов: подготовка без DELETE, повтор/конкуренция/lost response/rollback, чужой бот/схема/таблицы/triggers/FK, новая игра прежних аккаунтов |
 | Chick geometry | 12 тестов: 720 комбинаций anchors, реальные контуры глаз, 180 крайних вариантов feed/preen, 90 возрастных форм и 13 поз |
 | World / Flaps / Telegram / client | 22 + 15 + 9 + 4 теста PASS |
-| CHIPPER_CHROMIUM_PATH=/tmp/chipper-browser/chromium npm run test:ui | 33/33 PASS, 38,6с; запуск оркестратором после последней художественной правки |
+| CHIPPER_CHROMIUM_PATH=/tmp/chipper-browser/chromium npm run test:ui | 33/33 PASS, 39,1с; запуск оркестратором после исправления CI harness, без изменения tracked артефактов |
 | git diff --check / документы 0.1 | PASS; исторические спецификации/отчёты и screenshots 0.1 не изменены |
 | Production bundle | index-kzwIfClV.js 316,00KB / 102,65KB gzip; CSS 39,73KB. Нет dev backend, каталога, synthetic identities и credential values |
 

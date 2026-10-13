@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fixture, operation } from '../helpers.js';
 import type { ApiResult } from '../../src/types';
-import { bridge, enterFlaps, fallToResult } from './fixtures';
+import { bridge, enterFlaps, fallToResult, qaPath } from './fixtures';
 
 test('synthetic production adapter switches identities and discards delayed old-account care', async ({ page }) => {
   const f = fixture(); const a = await f.initial(); const b = await f.initial(202);
@@ -52,7 +52,7 @@ test('focus during flight does not occupy finish with a background read; one ser
   await expect(page.locator('.flaps-game')).toHaveAttribute('data-phase', 'ready'); await fallToResult(page);
   await expect(page.getByText('Следующее пёрышко через', { exact: false })).toBeVisible();
   expect((await f.call('getHome')).state.player.feathers).toBe(1);
-  await page.screenshot({ path: 'DOCS/qa/0.2/flaps-cooldown-result-dark.png' });
+  await page.screenshot({ path: qaPath('flaps-cooldown-result-dark.png') });
 });
 
 test('lost finish response retries the same operation and does not duplicate its reward', async ({ page }) => {

@@ -2,26 +2,22 @@
 
 Владелец разрешил штатный выпуск и один адресный сброс игрового прогресса **@chipperhatcherybot / App ID 8924974998**. Дополнительное разрешение на эти шаги не требуется. Системные данные, настройки бота, секреты и сторонние ресурсы не затрагиваются.
 
-По предоставленному владельцем логу Termux уже опубликован source **7fd2486d3233e6f560620017d00f478568cacb4d**, **cloud revision 2**, URL **https://app8924974998.tgcloud.ai/**. Проверки этого checkpoint: 161/161 тестов PASS. Это не подтверждение завершённого reset.
+**Однократный clean start завершён.** Игровой код source 7fd2486d3233e6f560620017d00f478568cacb4d; schema-only source c2f87e5922b36ea616d3a90450532316edcacbad/cloud revision 3. Владелец выполнил prepare/apply/final dry-run из **`cb4e83ac619435f09dc7969364c90defe18b5407`**: planned 3 legacy → completed receipt/remaining 0/players 0/legacy 0/V2=0/alreadyApplied=true. Fetch23 modules revision 3, status clean/static 3 filesup-to-date/webhook in-sync. [Полный receipt и evidence](ACCEPTANCE_RESULT_0.2.md).
 
-Последний подтверждённый владельцем шаг: recovery source **c2f87e5922b36ea616d3a90450532316edcacbad**, успешный **schema-only push, cloud revision 3**. Миграция добавила только объявленную receipt table: **added 1, skipped 0**. Последующий live dry-run PASS: appId=8924974998/@chipperhatcherybot, players=3, legacyPlayers=3, currentV2Players=0, jsonFunctionsReady=true, receiptTableReady=true, alreadyApplied=false, receipt=null. **Prepare/reset ещё не выполнены**: wrapper c2f87e5 отклонил штатную stderr строку CLI `- Checking schema...` до temporary endpoint/SQL-записей.
-
-Для текущего владельческого checkout таблица уже готова; **повторный push/migrate не требуется**. После перехода на новый SHA исправления wrapper выполните только:
+**Не запускайте reset повторно и не удаляйте receipt `chipper-v0.2-clean-start`.** Следующие deploy сохраняют новую игру и выполняются штатно:
 
 ```bash
 npm run check &&
-node scripts/reset-game-v0.2.mjs --prepare &&
-node scripts/reset-game-v0.2.mjs --apply &&
-node scripts/reset-game-v0.2.mjs --dry-run &&
 npx tgcloud fetch &&
-npx tgcloud --no-pager status
+npx tgcloud --no-pager status &&
+npx tgcloud --no-pager diff
 ```
 
-Каждая команда запускается только после успеха предыдущей. Новый SHA — последний spinner-compatibility commit существующего PR#2/финальный отчёт. Изменения не затрагивают schema/gameplay runtime. До completed receipt и post-reset legacyPlayers0 очистка остаётся НЕ подтверждённой. Ниже сохранён полный runbook для ещё не подготовленной среды; не повторяйте выполненную миграцию текущего приложения.
+После проверки ожидаемого cloud diff и сборки — отдельно `npx tgcloud push`, затем fetch/status и проверка фактического URL/revision. UI tests требуются по характеру изменённого игрового/UI кода; ordinary tests не меняют tracked QA artifacts. Подготовка/reset не являются deploy hooks. Merge существующего PR остаётся действием владельца.
 
-Прежний helper отказал на первом SQL-чтении `sqlite_master`: `Failed to prepare query [23] not authorized`. Во всех показанных вызовах dry-run/prepare/apply ошибка возникла после проверки getMe, но **до любых SQL-записей**. Следовательно, старый helper не удалял профили и не создавал marker/trigger. Старые schemaVersion=1 пока могут получать RESET_REQUIRED, а новые V2 аккаунты могли появиться после публикации и должны сохраниться.
+Прежний catalog SQL refusal[23] и несовместимость wrapper с normal stderr progress были до SQL-записей и устранены. Полный одноразовый runbook ниже сохранён как audit процедуры; для текущего приложения он уже исполнен. Новый финальный docs-only SHA не заменяет source_sha completed receipt и не требует публикации кода/schema/данных.
 
-Исправленная процедура не читает каталог/PRAGMA и не создаёт DDL/triggers через SDK. Receipt table объявляется в `tgcloud/schema.js` и добавляется штатной миграцией CLI. Игровой DML использует только заранее известные таблицы/столбцы, JSON-capability probe и версионную границу удаления.
+## Историческая процедура единственного reset
 
 ## 1. Получить исправленный immutable checkpoint
 
@@ -55,7 +51,7 @@ Diagnose через административный `tgcloud run` выполн�
 
 Проверьте точные App ID 8924974998 и @chipperhatcherybot. Неподдерживаемые SQL/JSON, повреждённые агрегаты, неизвестные schemaVersion или несогласованный владелец требуют разбора и блокируют изменяющие шаги. Не заменяйте их чтением системного каталога, прямым DDL, придуманными SQL CLI-командами или очисткой всей базы.
 
-Для среды без предыдущей diagnosis сначала выполните только этот read-only шаг. В текущем владельческом приложении diagnosis/dry-run и миграция уже подтверждены указанным выше логом; продолжение — исправленный wrapper prepare/apply, без повторного push/migrate.
+Для initial staging среды diagnosis является первым read-only шагом. В текущем владельческом приложении весь runbook завершён; при необходимости контроля допустим только read-only dry-run completed receipt, без повторной подготовки/очистки.
 
 ## 3. Добавить только объявленную receipt table
 
@@ -147,7 +143,7 @@ node scripts/reset-game-v0.2.mjs --dry-run
 npx tgcloud fetch && npx tgcloud --no-pager status
 ```
 
-Запишите фактические source SHA, новую cloud revision, URL, planned legacy count, completed receipt и post-reset counts. До этих подтверждений **reset остаётся НЕ выполненным**. Обычные будущие deploy никогда не вызывают prepare/apply автоматически.
+Запишите фактические source SHA, новую cloud revision, URL, planned legacy count, completed receipt и post-reset counts. В текущем приложении эти подтверждения уже получены; сохраняйте completed receipt постоянно. Обычные будущие deploy никогда не вызывают prepare/apply автоматически.
 
 Temporary endpoint создаётся только локально для supported `tgcloud run`, удаляется в finally и не публикуется. Не запускайте push параллельно helper. При остатке файла после SIGKILL release gate отказывает; сначала проверьте завершение процесса и удалите только его temporary local файл.
 

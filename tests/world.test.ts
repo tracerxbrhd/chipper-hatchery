@@ -184,7 +184,7 @@ describe('Living World priority and behaviour', () => {
     }
     expect(modes.has('walk')).toBe(true);
     expect(modes.has('look')).toBe(true);
-    expect(modes.has('preen')).toBe(true);
+    expect(modes.has('preen') || modes.has('peck') || modes.has('yawn')).toBe(true);
     expect(worldDistance(model.position, WORLD_HOME)).toBeGreaterThan(.03);
   });
   test('local bird IDs vary idle while the same ID stays reproducible', () => {

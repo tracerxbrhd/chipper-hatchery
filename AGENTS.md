@@ -2,6 +2,8 @@
 
 ## Chipper 0.3 — Social & Feel Update (current instructions)
 
+**Implementation checkpoint:** 0.3 runtime/UI/social/gifts implemented on `feature/chipper-v0.3`. See `DOCS/CONTRACT_0.3.md`, `ARCHITECTURE_0.3.md`, `IMPLEMENTATION_0.3.md`, and `ACCEPTANCE_RESULT_0.3.md` for actual evidence. Beta 0.3 is not deployed from this environment: CLI access is absent. Follow `DOCS/DEPLOYMENT_0.3.md`; temporary preflight endpoints must never be pushed. After gift reservations/transfers, use 0.3 fix-forward; old 0.2 is not a safe backend rollback.
+
 **Current task source:** `DOCS/CODEX_TASK_0.3.md`. Read **fully**, then `DOCS/GDD_0.3.md` and `DOCS/ACCEPTANCE_0.3.md` **before editing code**. This is a full implementation assignment, not a request to write another plan. The owner's initial Codex launch message will attach screenshots of Chipper 0.2 and a Telegram bottom-dock visual reference: inspect them before redesigning. Historical 0.1/0.2 docs remain reference-only unless a 0.3 document explicitly cites preserved invariants.
 
 - Work on `feature/chipper-v0.3` from latest `main`. Create **one PR into main, DO NOT MERGE**. All implementation and integration should be completed in one Codex orchestration pass, using actual subagents when available.

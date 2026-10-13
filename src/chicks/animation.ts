@@ -15,7 +15,7 @@ export function gaitFoot(anchor: Point, phase: number, stride = 18, lift = 11): 
   return { x: anchor.x + stride * (t - .5), y: anchor.y - Math.sin(t * Math.PI) * lift };
 }
 
-export function poseFrame(geometry: ChickGeometry, pose: ChickPose, phase = 0): PoseFrame {
+export function poseFrame(geometry: ChickGeometry, pose: ChickPose, phase = 0, reaction = 0): PoseFrame {
   const t = clamp(Number.isFinite(phase) ? phase : 0);
   const wave = Math.sin(t * Math.PI * 2);
   const frame: PoseFrame = {
@@ -66,6 +66,34 @@ export function poseFrame(geometry: ChickGeometry, pose: ChickPose, phase = 0): 
       frame.bodyOffset = -Math.sin(t * Math.PI) * 23;
       frame.leftFoot.y += frame.bodyOffset; frame.rightFoot.y += frame.bodyOffset;
       frame.headAngle = -wave * 7; frame.wingAngle = -Math.sin(t * Math.PI) * 52; frame.openBeak = true;
+      break;
+    case 'tap':
+      frame.headAngle = Math.sin(t * Math.PI) * (reaction === 1 ? 13 : -10);
+      frame.wingAngle = reaction === 2 ? -Math.sin(t * Math.PI) * 26 : -4;
+      frame.closedEyes = reaction === 1 && t > .2 && t < .8;
+      frame.openBeak = reaction === 0 && t > .15 && t < .7;
+      frame.tailAngle = wave * 5;
+      break;
+    case 'stroke':
+      frame.closedEyes = true; frame.headAngle = -10;
+      frame.headOffset = 2; frame.wingAngle = 5; frame.tailAngle = -5;
+      break;
+    case 'held':
+      // Hip and ankle coordinates come from this bird's anatomy, never a generic sprite.
+      frame.leftFoot = { x: geometry.anchors.legRootLeft.x + 3, y: geometry.anchors.legRootLeft.y + geometry.legLength * 1.1 };
+      frame.rightFoot = { x: geometry.anchors.legRootRight.x - 3, y: geometry.anchors.legRootRight.y + geometry.legLength * 1.04 };
+      frame.wingAngle = -24; frame.headAngle = -8; frame.tailAngle = 7;
+      break;
+    case 'land':
+      frame.bodyOffset = Math.min(geometry.legLength * .23, 6) * Math.sin(t * Math.PI);
+      frame.headAngle = Math.sin(t * Math.PI) * 6; frame.wingAngle = -Math.sin(t * Math.PI) * 12;
+      break;
+    case 'peck':
+      frame.headAngle = 18 * Math.sin(t * Math.PI); frame.headOffset = 3 * Math.sin(t * Math.PI);
+      break;
+    case 'yawn':
+      frame.closedEyes = t > .2 && t < .8; frame.openBeak = t > .2 && t < .8;
+      frame.headAngle = -12 * Math.sin(t * Math.PI); frame.wingAngle = -10 * Math.sin(t * Math.PI);
       break;
     case 'sleep':
       frame.bodyOffset = geometry.legLength * .67;

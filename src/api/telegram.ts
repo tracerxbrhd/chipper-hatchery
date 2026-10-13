@@ -12,6 +12,7 @@ export interface TelegramWebApp {
   platform?: string;
   viewportHeight?: number;
   viewportStableHeight?: number;
+  isFullscreen?: boolean;
   isActive?: boolean;
   isVerticalSwipesEnabled?: boolean;
   safeAreaInset?: Insets;
@@ -50,6 +51,20 @@ export function stableViewportHeight(appHeight: number | undefined, fallback: nu
   return positive(appHeight) || positive(fallback) || 568;
 }
 
+/**
+ * Telegram exposes edge exclusions, not native button rectangles. Reserve a
+ * conservative corridor for each native button group and put secondary controls
+ * below the chrome. System and content top values are never summed together.
+ */
+export function nativeChromeLayout(safe: Partial<Insets> | undefined, content: Partial<Insets> | undefined, width: number, native: boolean) {
+  if (!native) return { top: 8, left: 12, right: 12, clearance: 0, mode: 'full' as const };
+  const top = positive(safe?.top);
+  const left = Math.max(96, positive(safe?.left), positive(content?.left));
+  const right = Math.max(96, positive(safe?.right), positive(content?.right));
+  const corridor = Math.min(520, positive(width) || 360) - left - right;
+  return { top, left, right, clearance: Math.max(4, positive(content?.top) - top - 44), mode: corridor < 118 ? 'mark' : corridor < 172 ? 'compact' : 'full' };
+}
+
 function supports(app: TelegramWebApp, version: string) {
   try { return !app.isVersionAtLeast || app.isVersionAtLeast(version); } catch { return false; }
 }
@@ -81,6 +96,21 @@ export function setupTelegram() {
     const height = keyboardInput && visualHeight > 0 ? Math.min(stableHeight, visualHeight) : stableHeight;
     root.style.setProperty('--app-height', `${height}px`);
     root.dataset.compact = height <= 640 ? 'true' : 'false';
+    root.dataset.keyboard = keyboardInput && stableHeight - height > 120 ? 'true' : 'false';
+    updateChrome();
+  }
+
+  function updateChrome() {
+    const native = Boolean(app?.initData);
+    const chrome = nativeChromeLayout(app?.safeAreaInset, app?.contentSafeAreaInset, window.innerWidth, native);
+    root.dataset.native = native ? 'true' : 'false';
+    root.dataset.hud = chrome.mode;
+    root.style.setProperty('--tg-system-top', `${positive(app?.safeAreaInset?.top)}px`);
+    root.style.setProperty('--tg-content-top', `${positive(app?.contentSafeAreaInset?.top)}px`);
+    root.style.setProperty('--tg-chrome-top', `${chrome.top}px`);
+    root.style.setProperty('--tg-chrome-left', `${chrome.left}px`);
+    root.style.setProperty('--tg-chrome-right', `${chrome.right}px`);
+    root.style.setProperty('--tg-chrome-clearance', `${chrome.clearance}px`);
   }
 
   function updateAppearance() {
@@ -88,7 +118,8 @@ export function setupTelegram() {
     root.dataset.theme = theme;
     const insets = safeInsets(app?.safeAreaInset, app?.contentSafeAreaInset);
     sides.forEach(side => root.style.setProperty(`--tg-safe-${side}`, `${insets[side]}px`));
-    const color = theme === 'dark' ? '#202220' : '#f5f3ed';
+    updateChrome();
+    const color = theme === 'dark' ? '#131719' : '#f5f6f3';
     try { app?.setHeaderColor?.(color); } catch { /* Optional platform styling. */ }
     try { app?.setBackgroundColor?.(color); } catch { /* Optional platform styling. */ }
     try { if (app && supports(app, '7.10')) app.setBottomBarColor?.(color); } catch { /* Older clients have their own bottom bar. */ }

@@ -1,21 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { call, getAuthKey, isDevMock, playFeedback } from './api/client';
-import type { ApiError, ApiResult, CareAction, Chick, Method, Snapshot } from './types';
+import type { ApiError, ApiResult, CareAction, Chick, Gift, Method, PublicChick, PublicProfile, Snapshot, SocialLink, SocialSummary } from './types';
 import { ru } from './i18n';
-import { HatchResult, Incubator, Onboarding } from './screens/EggScreens';
+import { HatchResult, Onboarding } from './screens/EggScreens';
 import { Activities, GameResultScreen, FlapsGame, type GameAttempt, type GameResult } from './screens/GameScreens';
-import { ChickCard, Collection, Home, Settings } from './screens/PetScreens';
+import { ChickCard, Home, Settings } from './screens/PetScreens';
+import { CollectionHub, Shop, type CollectionSection } from './screens/CollectionHub';
+import { SocialScreen, VisitorScreen } from './screens/SocialScreens';
 import { Icon, type PetMotion, type Preferences } from './screens/Elements';
 import { Profile } from './screens/ProfileScreen';
 import { BottomDock, type Tab } from './navigation/BottomDock';
 import { ScreenTransition } from './navigation/ScreenTransition';
 import { setSceneGestures } from './api/telegram';
+import { NativeHud } from './design/NativeHud';
+import { launchIntent } from './social/share';
 import './app.css';
+import './social/features.css';
 
-type Screen = Tab | 'settings' | 'chick' | 'hatchResult' | 'game' | 'gameResult';
+type Screen = Tab | 'incubator' | 'settings' | 'chick' | 'hatchResult' | 'game' | 'gameResult' | 'social' | 'visit';
 type Success = Extract<ApiResult, { ok: true }>;
 interface Operation { method: Method; params: Record<string, unknown>; errorEventId: string; onSuccess?: (response: Success) => void }
-const mutations = new Set<Method>(['hatchEgg', 'completeOnboarding', 'careAction', 'activateChick', 'renameChick', 'buyEgg', 'startFlapsRun', 'finishFlapsRun', 'logEvent']);
+const mutations = new Set<Method>(['hatchEgg', 'completeOnboarding', 'careAction', 'activateChick', 'renameChick', 'buyEgg', 'startFlapsRun', 'finishFlapsRun', 'logEvent', 'updatePrivacy', 'createSocialLink', 'sendFriendRequest', 'respondFriendRequest', 'removeFriend', 'blockUser', 'offerGift', 'respondGift', 'cancelGift']);
+const legacyIncubator = () => location.hash === '#incubator' || ['incubator'].includes(new URLSearchParams(location.search).get('tab') ?? '');
 
 function readPreferences(): Preferences {
   try {
@@ -30,7 +36,16 @@ export default function App() {
   const [authKey] = useState(getAuthKey);
   const [state, setState] = useState<Snapshot | null>(null);
   const stateRef = useRef<Snapshot | null>(null);
-  const [screen, setScreen] = useState<Screen>('home');
+  const [screen, setScreen] = useState<Screen>(() => legacyIncubator() ? 'collection' : 'home');
+  const [collectionSection, setCollectionSection] = useState<CollectionSection>(() => legacyIncubator() ? 'eggs' : 'chicks');
+  const [social, setSocial] = useState<SocialSummary | null>(null);
+  const [gifts, setGifts] = useState<Gift[]>([]);
+  const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
+  const [link, setLink] = useState<SocialLink | null>(null);
+  const [shareChick, setShareChick] = useState<PublicChick | undefined>();
+  const [giftChickId, setGiftChickId] = useState<string | null>(null);
+  const [intent] = useState(launchIntent);
+  const intentResolved = useRef(false);
   const screenRef = useRef<Screen>('home');
   screenRef.current = screen;
   const [appOpenedEventId] = useState(() => crypto.randomUUID());
@@ -110,6 +125,10 @@ export default function App() {
         feedback('error');
       } else {
         acceptState(response.state);
+        if (response.result?.social) setSocial(response.result.social as SocialSummary);
+        if (response.result?.profile) setPublicProfile(response.result.profile as PublicProfile);
+        if (response.result?.gifts) setGifts(response.result.gifts as Gift[]);
+        if (response.result && 'link' in response.result) setLink(response.result.link as SocialLink | null);
         operationRef.current = null;
         // Release the lock before a successful operation starts its next step.
         busyRef.current = false;
@@ -175,15 +194,16 @@ export default function App() {
   }, [state, outside, screen, refresh]);
 
   const go = useCallback((next: Screen) => {
-    if (next === 'home' || next === 'incubator' || next === 'collection' || next === 'activities' || next === 'profile') setBackTo(next);
+    if (next === 'incubator') { setCollectionSection('eggs'); setBackTo('collection'); setScreen('collection'); return; }
+    if (next === 'home' || next === 'shop' || next === 'collection' || next === 'activities' || next === 'profile') setBackTo(next);
     setScreen(next);
   }, []);
 
   const back = useCallback(() => {
     if (screen === 'game') { window.dispatchEvent(new CustomEvent('chipper:flaps-back')); return; }
-    go(screen === 'gameResult' ? 'activities' : screen === 'hatchResult' ? 'incubator' : backTo);
+    go(screen === 'visit' ? 'social' : screen === 'gameResult' ? 'activities' : screen === 'hatchResult' ? 'incubator' : backTo);
   }, [screen, backTo, go]);
-  const secondaryScreen = ['settings', 'chick', 'hatchResult', 'game', 'gameResult'].includes(screen);
+  const secondaryScreen = ['settings', 'chick', 'hatchResult', 'game', 'gameResult', 'social', 'visit'].includes(screen);
   useEffect(() => {
     const button = window.Telegram?.WebApp?.BackButton;
     if (!button || !state || state.player.onboarding !== 'done') return;
@@ -246,6 +266,46 @@ export default function App() {
     });
   };
 
+  const openSocial = (chickId: string | null = null) => {
+    setGiftChickId(chickId); setShareChick(undefined); setLink(null); go('social');
+    perform('getSocial', {}, () => perform('listGifts'));
+  };
+  const openProfile = (profileId: string) => {
+    setPublicProfile(null); go('visit'); perform('visitProfile', { profileId });
+  };
+  const socialAction = (method: Method, params: Record<string, unknown> = {}) => {
+    if (method === 'createSocialLink' && params.kind !== 'chick') setShareChick(undefined);
+    perform(method, params, response => {
+      if (method === 'getSocial' || ['offerGift', 'respondGift', 'cancelGift', 'removeFriend', 'blockUser', 'respondFriendRequest'].includes(method)) perform('listGifts');
+      if (method === 'sendFriendRequest') {
+        const summary = response.result?.social as SocialSummary | undefined;
+        setPublicProfile(previous => {
+          if (!previous || previous.profileId !== params.profileId || !summary) return previous;
+          const relationship = summary.friends.some(peer => peer.profileId === previous.profileId) ? 'friend'
+            : summary.incoming.some(request => request.from.profileId === previous.profileId) ? 'incoming'
+            : summary.outgoing.some(request => request.to.profileId === previous.profileId) ? 'outgoing' : 'none';
+          return { ...previous, relationship };
+        });
+      }
+      if (method === 'updatePrivacy') { setLink(null); notify('Видимость сохранена'); }
+      if (response.result?.gift) notify(method === 'offerGift' ? 'Подарок предложен' : 'Ответ на подарок сохранён');
+    });
+  };
+  const shareBird = (chick: Chick) => {
+    setGiftChickId(null); setShareChick(chick); setLink(null); go('social');
+    perform('getSocial', {}, response => {
+      const own = response.result?.social as SocialSummary | undefined;
+      if (own?.profile.visibility === 'private') { notify('Сначала разрешите просмотр профиля. Ваше согласие нужно для публикации карточки.'); return; }
+      perform('createSocialLink', { kind: 'chick', chickId: chick.id });
+    });
+  };
+  useEffect(() => {
+    if (!intent || intentResolved.current || !state || state.player.onboarding !== 'done' || busy || operationRef.current) return;
+    intentResolved.current = true;
+    go('visit');
+    perform('resolveSocialLink', intent, () => { /* Verified backend authorizes the navigation hint. */ });
+  }, [intent, state, busy, go, perform]);
+
   const active = state?.chicks.find(chick => chick.id === state.player.activeChickId);
   const selected = state?.chicks.find(chick => chick.id === selectedId);
   const hatched = state?.chicks.find(chick => chick.id === hatchId);
@@ -262,23 +322,25 @@ export default function App() {
   };
 
   if (outside) return <div className="app outside-app"><main><div className="outside-symbol"><Icon name="egg" size={64} /></div><p className="eyebrow">{ru.app}</p><h1>{ru.outsideTitle}</h1><p className="intro">{ru.outsideBody}</p><a className="button primary" href="https://t.me/chipperhatcherybot" target="_blank" rel="noreferrer">{ru.openBot}</a></main></div>;
-  const dockActive = screen === 'gameResult' ? 'activities' : screen === 'hatchResult' ? 'incubator' : secondaryScreen ? backTo : screen as Tab;
+  const dockActive = screen === 'gameResult' ? 'activities' : screen === 'hatchResult' || screen === 'incubator' ? 'collection' : secondaryScreen ? backTo : screen as Tab;
   return <div className={`app ${screen === 'game' ? 'flaps-app' : ''} ${reducedMotion ? 'reduce-motion' : ''}`} data-motion={reducedMotion ? 'off' : 'on'}>
     {isDevMock && <div className="dev-banner">{ru.devMock}</div>}
-    {screen !== 'game' && <header className="app-header"><div className="brand"><span className="brand-mark" aria-hidden="true">c<span>✦</span></span><span>{ru.app}<small>hatchery</small></span></div>{state && !onboarding && <div className="header-actions"><span className="feather-balance" aria-label={ru.feathers(state.player.feathers)}><Icon name="feather" size={19} /><strong>{state.player.feathers}</strong></span>{secondaryScreen && <button className="icon-button" aria-label={ru.back} onClick={back}><Icon name="back" /></button>}</div>}</header>}
+    {screen !== 'game' && <NativeHud feathers={state && !onboarding ? state.player.feathers : null} onBack={secondaryScreen ? back : undefined} />}
     <main className={`app-main ${screen === 'game' ? 'game-main' : screen === 'home' && !onboarding ? 'scene-main' : ''}`}>
       {!online && <div className="offline-banner" role="status">{ru.offline}</div>}
       {error && <div className="error-banner" role="alert"><div><strong>{ru.errorTitle}</strong><p>{error.message || ru.errorBody}</p></div><button className="button small-button" onClick={error.retryable ? retry : recover} disabled={busy}>{busy ? ru.waiting : error.retryable ? ru.retry : ru.refresh}</button></div>}
       <ScreenTransition route={onboarding ? `onboarding-${state?.player.onboarding}` : screen} fixed={!onboarding && (screen === 'home' || screen === 'game')}>
       {!state ? !error && <div className="loading-state" role="status"><span className="spinner" /><p>{ru.loading}</p></div> : onboarding ? <Onboarding key={state.player.onboarding} state={state} busy={view.busy} reducedMotion={reducedMotion} onHatch={hatch} onComplete={completeOnboarding} /> : <>
-        {screen === 'home' && <Home state={state} {...view} motion={motion} onCare={care} onCard={id => { setSelectedId(id); go('chick'); }} />}
-        {screen === 'incubator' && <Incubator state={state} {...view} onBuy={() => perform('buyEgg', {}, () => { feedback('success'); notify(ru.eggBought); })} onHatch={hatch} />}
-        {screen === 'collection' && <Collection state={state} reducedMotion={reducedMotion} onCard={id => { setSelectedId(id); go('chick'); }} />}
-        {screen === 'chick' && selected && <ChickCard key={selected.id} chick={selected} state={state} {...view} onActivate={() => activate(selected.id)} onRename={name => perform('renameChick', { chickId: selected.id, name }, () => { feedback('success'); notify(ru.renamed); })} />}
+        {screen === 'home' && <Home state={state} {...view} motion={motion} onCare={care} onTouchFeedback={feedback} onCard={id => { setSelectedId(id); go('chick'); }} />}
+        {screen === 'shop' && <Shop />}
+        {screen === 'collection' && <CollectionHub section={collectionSection} onSection={setCollectionSection} state={state} {...view} onCard={id => { setSelectedId(id); go('chick'); }} onBuy={() => perform('buyEgg', {}, () => { feedback('success'); notify(ru.eggBought); })} onHatch={hatch} />}
+        {screen === 'chick' && selected && <ChickCard key={selected.id} chick={selected} state={state} {...view} onActivate={() => activate(selected.id)} onRename={name => perform('renameChick', { chickId: selected.id, name }, () => { feedback('success'); notify(ru.renamed); })} onShare={() => shareBird(selected)} onGift={() => openSocial(selected.id)} />}
         {screen === 'activities' && <Activities state={state} {...view} onStart={startGame} />}
         {screen === 'settings' && <Settings preferences={preferences} onChange={updatePreference} onRefresh={() => perform('getHome', {}, () => notify(ru.refreshed))} busy={view.busy} />}
-        {screen === 'profile' && <Profile state={state} now={now} onSettings={() => go('settings')} />}
-        {screen === 'hatchResult' && hatched && <HatchResult chick={hatched} busy={view.busy} reducedMotion={reducedMotion} onActivate={() => activate(hatched.id)} onCollection={() => go('collection')} />}
+        {screen === 'profile' && <Profile state={state} now={now} onSettings={() => go('settings')} onSocial={() => openSocial()} />}
+        {screen === 'social' && <SocialScreen key={giftChickId ?? 'social'} social={social} gifts={gifts} state={state} busy={view.busy} now={now} onAction={socialAction} onOpen={openProfile} giftChickId={giftChickId} link={link} shareChick={shareChick} onCloseLink={() => setLink(null)} />}
+        {screen === 'visit' && <VisitorScreen profile={publicProfile} {...view} inviteToken={intent?.kind === 'invite' ? intent.token : undefined} onAction={socialAction} onBack={() => openSocial()} />}
+        {screen === 'hatchResult' && hatched && <HatchResult chick={hatched} busy={view.busy} reducedMotion={reducedMotion} onActivate={() => activate(hatched.id)} onCollection={() => { setCollectionSection('chicks'); go('collection'); }} />}
         {screen === 'game' && attempt && <FlapsGame key={attempt.runId} attempt={attempt} {...view} sound={preferences.sound} haptics={preferences.haptics} onComplete={finishGame} onLeave={() => { setAttempt(null); go('activities'); }} />}
         {screen === 'gameResult' && gameResult && <GameResultScreen result={gameResult} chick={attempt?.chick ?? active} {...view} onAgain={startGame} onHome={() => go('home')} />}
       </>}

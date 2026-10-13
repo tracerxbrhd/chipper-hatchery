@@ -21,15 +21,26 @@ export interface Chick {
   stage: Stage; hunger: number; mood: number; energy: number;
   lastFeedAt: number | null; lastPlayAt: number | null; sleepUntil: number | null;
   careMilestones: number[];
+  reservedGiftId?: string;
 }
+export interface GameRecord { configVersion: string; scoreType: string; bestScore: number; completedRuns: number; lastPlayedAt: number | null; lastRewardAt: number | null; scoreTrust: 'casual' }
+export type Visibility = 'private' | 'friends' | 'public';
+export type PublicChick = Pick<Chick, 'id' | 'appearanceVersion' | 'genes' | 'appearanceId' | 'rarity' | 'name' | 'bornAt' | 'stage'>;
+export interface Peer { profileId: string; displayName: string; canVisit?: boolean }
+export interface FriendRequest { requestId: string; from: Peer; to: Peer; status: 'pending'; createdAt?: number }
+export interface SocialProfile extends Peer { visibility: Visibility; collectionVisibility: Visibility; inviteToken: string | null; shareToken: string | null }
+export interface SocialSummary { profile: SocialProfile; friends: Peer[]; incoming: FriendRequest[]; outgoing: FriendRequest[]; blocked: Peer[]; giftsEnabled: boolean }
+export interface PublicProfile extends Peer { relationship: 'self' | 'friend' | 'incoming' | 'outgoing' | 'none' | 'blocked'; accessible: boolean; activeChick: PublicChick | null; chicks: PublicChick[] | null; collectionVisible: boolean; invited?: boolean }
+export interface SocialLink { token: string; url: string; kind: 'invite' | 'profile' | 'chick'; chickId?: string }
+export interface Gift { giftId: string; sender: Peer; recipient: Peer; chick: PublicChick; status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'; createdAt: number; expiresAt: number; completedAt: number | null }
 export interface Egg { id: string; kind: 'starter' | 'ordinary'; createdAt: number; readyAt: number }
 export interface Snapshot {
   revision: number; serverNow: number; balanceVersion: string;
   player: { telegramId: string; feathers: number; activeChickId: string | null;
     onboarding: 'egg' | 'name' | 'done'; careRewardAt: number | null; miniGameRewardAt: number | null;
-    flaps: { bestScore: number; completedRuns: number; lastPlayedAt: number | null } };
+    flaps: { bestScore: number; completedRuns: number; lastPlayedAt: number | null }; games?: Record<string, GameRecord> };
   chicks: Chick[]; egg: Egg | null;
 }
 export interface ApiError { code: string; message: string; retryable: boolean; retryAt?: number }
 export type ApiResult = { ok: true; state: Snapshot; result?: Record<string, unknown> } | { ok: false; error: ApiError };
-export type Method = 'bootstrap' | 'getHome' | 'listChicks' | 'getIncubator' | 'hatchEgg' | 'completeOnboarding' | 'careAction' | 'activateChick' | 'renameChick' | 'buyEgg' | 'startFlapsRun' | 'finishFlapsRun' | 'logEvent';
+export type Method = 'bootstrap' | 'getHome' | 'listChicks' | 'getIncubator' | 'hatchEgg' | 'completeOnboarding' | 'careAction' | 'activateChick' | 'renameChick' | 'buyEgg' | 'startFlapsRun' | 'finishFlapsRun' | 'logEvent' | 'getSocial' | 'updatePrivacy' | 'createSocialLink' | 'resolveSocialLink' | 'getPublicProfile' | 'visitProfile' | 'sendFriendRequest' | 'respondFriendRequest' | 'removeFriend' | 'blockUser' | 'listGifts' | 'offerGift' | 'respondGift' | 'cancelGift';

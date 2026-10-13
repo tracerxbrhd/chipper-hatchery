@@ -1,7 +1,7 @@
 import { boundWorldPoint, moveWorldPoint, WORLD_BOUNDS, WORLD_FOOD, WORLD_HOME, worldDistance, type WorldPoint } from './worldMath';
 
-export type WorldMode = 'idle' | 'turn' | 'walk' | 'look' | 'preen' | 'feed' | 'play' | 'sleep' | 'wake' | 'grow';
-export type WorldPose = 'idle' | 'turn' | 'walk' | 'look' | 'preen' | 'feed' | 'play' | 'sleep' | 'wake' | 'grow';
+export type WorldMode = 'idle' | 'turn' | 'walk' | 'look' | 'preen' | 'peck' | 'yawn' | 'tap' | 'stroke' | 'held' | 'land' | 'feed' | 'play' | 'sleep' | 'wake' | 'grow';
+export type WorldPose = WorldMode;
 export type WorldDirection = 'left' | 'right' | 'front';
 export interface WorldModel {
   position: WorldPoint;
@@ -14,8 +14,13 @@ export interface WorldModel {
   decisionAt: number;
   randomState: number;
   feeding: boolean;
+  reaction: number;
+  lift: number;
+  liftTarget: number;
+  velocity: WorldPoint;
+  gaze: { x: number; y: number };
 }
-export interface WorldFrame { position: WorldPoint; mode: WorldMode; pose: WorldPose; direction: WorldDirection; phase: number; moving: boolean }
+export interface WorldFrame { position: WorldPoint; mode: WorldMode; pose: WorldPose; direction: WorldDirection; phase: number; moving: boolean; reaction: number; lift: number; motion: number; gaze: { x: number; y: number } }
 
 const TURN_SECONDS = .32;
 const WALK_SPEED = .17;
@@ -34,19 +39,21 @@ function changeMode(model: WorldModel, mode: WorldMode) {
 function rest(model: WorldModel) {
   model.target = null;
   model.feeding = false;
+  model.lift = 0; model.liftTarget = 0; model.velocity = { u: 0, v: 0 };
   changeMode(model, 'idle');
   model.decisionAt = model.time + 5 + random(model) * 7;
 }
 
 export function createWorldModel(seed: number): WorldModel {
-  const model: WorldModel = { position: { ...WORLD_HOME }, target: null, mode: 'idle', direction: 'right', time: 0, stateTime: 0, gait: 0, decisionAt: 0, randomState: seed >>> 0, feeding: false };
+  const model: WorldModel = { position: { ...WORLD_HOME }, target: null, mode: 'idle', direction: 'right', time: 0, stateTime: 0, gait: 0, decisionAt: 0, randomState: seed >>> 0, feeding: false,
+    reaction: -1, lift: 0, liftTarget: 0, velocity: { u: 0, v: 0 }, gaze: { x: 0, y: 0 } };
   model.decisionAt = 3 + random(model) * 3;
   return model;
 }
 
 /** Care/sleep own the actor. Rapid taps can replace a walk goal, but cannot cancel care. */
 export function setWorldTarget(model: WorldModel, target: WorldPoint): boolean {
-  if (['feed', 'play', 'sleep', 'wake', 'grow'].includes(model.mode)) return false;
+  if (['feed', 'play', 'sleep', 'wake', 'grow', 'held', 'land'].includes(model.mode)) return false;
   const goal = boundWorldPoint(target);
   if (worldDistance(model.position, goal) < .012) {
     model.target = null;
@@ -63,15 +70,57 @@ export function setWorldTarget(model: WorldModel, target: WorldPoint): boolean {
 }
 
 export function greetWorldChick(model: WorldModel): boolean {
-  if (['feed', 'play', 'sleep', 'wake', 'grow'].includes(model.mode)) return false;
+  if (['feed', 'play', 'sleep', 'wake', 'grow', 'held', 'land'].includes(model.mode)) return false;
   model.target = null;
   model.direction = 'front';
-  changeMode(model, 'play');
+  model.reaction = (model.reaction + 1 + Math.floor(random(model) * 2)) % 3;
+  changeMode(model, 'tap');
   return true;
+}
+
+export function strokeWorldChick(model: WorldModel): boolean {
+  if (['feed', 'play', 'sleep', 'wake', 'grow', 'held', 'land'].includes(model.mode)) return false;
+  model.target = null;
+  changeMode(model, 'stroke');
+  return true;
+}
+
+export function pickupWorldChick(model: WorldModel, lift: number): boolean {
+  if (['feed', 'play', 'sleep', 'wake', 'grow', 'held', 'land'].includes(model.mode)) return false;
+  model.target = { ...model.position }; model.feeding = false;
+  model.liftTarget = Math.max(0, Number.isFinite(lift) ? lift : 0);
+  model.velocity = { u: 0, v: 0 };
+  changeMode(model, 'held');
+  return true;
+}
+
+export function dragWorldChick(model: WorldModel, target: WorldPoint, lift: number): boolean {
+  if (model.mode !== 'held') return false;
+  model.target = boundWorldPoint(target);
+  model.liftTarget = Math.max(0, Number.isFinite(lift) ? lift : 0);
+  return true;
+}
+
+export function releaseWorldChick(model: WorldModel): boolean {
+  if (model.mode !== 'held') return false;
+  model.target = null; model.liftTarget = 0; model.velocity = { u: 0, v: 0 };
+  changeMode(model, 'land');
+  return true;
+}
+
+/** Cancellation is immediate: nothing held survives background, sleep or unmount. */
+export function cancelWorldTouch(model: WorldModel) {
+  if (['held', 'land', 'stroke', 'tap'].includes(model.mode)) rest(model);
+}
+
+export function lookWorldChick(model: WorldModel, x: number, y: number) {
+  if (['sleep', 'feed', 'play', 'grow'].includes(model.mode)) return;
+  model.gaze = { x: Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0, y: Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0 };
 }
 
 export function startWorldCare(model: WorldModel, action: 'feed' | 'play'): boolean {
   if (model.mode === 'sleep') return false;
+  model.lift = 0; model.liftTarget = 0; model.velocity = { u: 0, v: 0 };
   model.target = action === 'feed' ? { ...WORLD_FOOD } : null;
   model.feeding = false;
   if (action === 'feed') model.direction = WORLD_FOOD.u < model.position.u ? 'left' : 'right';
@@ -95,7 +144,7 @@ function autonomousDecision(model: WorldModel) {
     setWorldTarget(model, { u: WORLD_BOUNDS.u + Math.cos(angle) * WORLD_BOUNDS.radiusU * radius, v: WORLD_BOUNDS.v + Math.sin(angle) * WORLD_BOUNDS.radiusV * radius });
   } else {
     model.direction = choice < .85 ? 'front' : model.direction;
-    changeMode(model, choice < .85 ? 'look' : 'preen');
+    changeMode(model, choice < .75 ? 'look' : choice < .85 ? 'preen' : choice < .94 ? 'peck' : 'yawn');
   }
 }
 
@@ -109,10 +158,25 @@ export function stepWorld(model: WorldModel, elapsedSeconds: number, sleeping: b
     if (model.mode !== 'sleep') changeMode(model, 'sleep');
     model.target = null;
     model.feeding = false;
+    model.lift = 0; model.liftTarget = 0; model.velocity = { u: 0, v: 0 };
     return worldFrame(model);
   }
   if (model.mode === 'sleep') changeMode(model, 'wake');
-  if (model.mode === 'wake' && model.stateTime >= .65) rest(model);
+  if (model.mode === 'held') {
+    const goal = model.target ?? model.position;
+    // Critically damped local spring; small substeps remain stable at 30/60/120 Hz.
+    const substeps = Math.max(1, Math.ceil(dt / (1 / 120)));
+    const h = dt / substeps;
+    for (let i = 0; i < substeps; i++) {
+      model.velocity.u += ((goal.u - model.position.u) * 170 - model.velocity.u * 26) * h;
+      model.velocity.v += ((goal.v - model.position.v) * 170 - model.velocity.v * 26) * h;
+      model.position = boundWorldPoint({ u: model.position.u + model.velocity.u * h, v: model.position.v + model.velocity.v * h });
+      model.lift += (model.liftTarget - model.lift) * Math.min(1, 18 * h);
+    }
+  } else if (model.mode === 'land') {
+    model.lift = Math.max(0, model.lift * Math.exp(-22 * dt) - 30 * dt);
+    if (model.stateTime >= .42) rest(model);
+  } else if (model.mode === 'wake' && model.stateTime >= .65) rest(model);
   else if (model.mode === 'grow' && model.stateTime >= 1.5) rest(model);
   else if (model.mode === 'turn' && model.stateTime >= TURN_SECONDS) changeMode(model, 'walk');
   else if (model.mode === 'walk' && model.target) {
@@ -130,6 +194,10 @@ export function stepWorld(model: WorldModel, elapsedSeconds: number, sleeping: b
   } else if (model.mode === 'play' && model.stateTime > 1.8) rest(model);
   else if (model.mode === 'look' && model.stateTime > 1.4) rest(model);
   else if (model.mode === 'preen' && model.stateTime > 1.9) rest(model);
+  else if (model.mode === 'tap' && model.stateTime > .65) rest(model);
+  else if (model.mode === 'stroke' && model.stateTime > .85) rest(model);
+  else if (model.mode === 'peck' && model.stateTime > 1.1) rest(model);
+  else if (model.mode === 'yawn' && model.stateTime > 1.6) rest(model);
   else if (model.mode === 'idle' && model.time >= model.decisionAt) autonomousDecision(model);
   return worldFrame(model);
 }
@@ -137,7 +205,8 @@ export function stepWorld(model: WorldModel, elapsedSeconds: number, sleeping: b
 export function worldFrame(model: WorldModel): WorldFrame {
   const moving = model.mode === 'walk' || (model.mode === 'feed' && model.target !== null);
   const pose: WorldPose = moving ? 'walk' : model.mode;
-  const duration = model.mode === 'turn' ? TURN_SECONDS : model.mode === 'wake' ? .65 : model.mode === 'grow' ? 1.5 : model.mode === 'look' ? 1.4 : model.mode === 'preen' ? 1.9 : null;
+  const duration = model.mode === 'turn' ? TURN_SECONDS : model.mode === 'wake' ? .65 : model.mode === 'grow' ? 1.5 : model.mode === 'look' ? 1.4 : model.mode === 'preen' ? 1.9 : model.mode === 'tap' ? .65 : model.mode === 'land' ? .42 : model.mode === 'peck' ? 1.1 : model.mode === 'yawn' ? 1.6 : null;
   const phase = moving ? model.gait : duration !== null ? Math.min(1, model.stateTime / duration) : (model.stateTime / (model.mode === 'sleep' ? 4.5 : model.mode === 'feed' ? .75 : model.mode === 'play' ? .6 : 3.7)) % 1;
-  return { position: { ...model.position }, mode: model.mode, pose, direction: model.direction, phase, moving };
+  return { position: { ...model.position }, mode: model.mode, pose, direction: model.direction, phase, moving,
+    reaction: model.reaction, lift: model.lift, motion: Math.max(-1, Math.min(1, model.velocity.u * 3)), gaze: { ...model.gaze } };
 }

@@ -6,6 +6,7 @@ import { genesFor, getAppearanceLabel, POSE_LABELS, STAGE_LABELS, type ChickDire
 export interface ChickRenderOptions {
   chick?: ChickVisual; stage?: Stage; pose?: ChickPose; direction?: ChickDirection;
   phase?: number; shadow?: boolean; size?: number; id?: string; blink?: boolean;
+  reaction?: number; motion?: number; gaze?: Point;
 }
 const n = (value: number) => Number(value.toFixed(3));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -89,13 +90,13 @@ function beak(genes: ChickGenesV2, root: Point, front: number, open: boolean, si
     `transform="${move(root)} scale(${n(size)})" class="chick-v2-beak"`);
 }
 
-function eye(center: Point, radius: number, horizontal: number, closed: boolean, genes: ChickGenesV2, far = false, look = false): string {
+function eye(center: Point, radius: number, horizontal: number, closed: boolean, genes: ChickGenesV2, far = false, look = false, gaze?: Point): string {
   if (closed) return path(`M${n(center.x - radius * .7)} ${n(center.y)}Q${n(center.x)} ${n(center.y + radius * .6)} ${n(center.x + radius * .7)} ${n(center.y)}`, 'none', 'stroke="#f7f1e3" stroke-width="4.5" stroke-linecap="round"')
     + path(`M${n(center.x - radius * .7)} ${n(center.y)}Q${n(center.x)} ${n(center.y + radius * .6)} ${n(center.x + radius * .7)} ${n(center.y)}`, 'none', 'stroke="#303632" stroke-width="2.2" stroke-linecap="round"');
   const curious = genes.eyeStyle === 'curious';
   const r = radius * (far ? .66 : 1);
-  const pupilX = center.x + r * (look ? 0 : .16);
-  const pupilY = center.y + (curious && !far ? -r * .07 : r * .03);
+  const pupilX = center.x + r * (gaze ? Math.max(-1, Math.min(1, gaze.x)) * .25 : look ? 0 : .16);
+  const pupilY = center.y + (gaze ? Math.max(-1, Math.min(1, gaze.y)) * r * .22 : curious && !far ? -r * .07 : r * .03);
   let contents = ellipse(center.x, center.y, r * horizontal, r * (curious ? 1.07 : 1), '#fffdf3', 'stroke="#303632" stroke-width="1.35"');
   contents += ellipse(pupilX, pupilY, r * .46 * horizontal, r * .49, '#292f2b');
   contents += ellipse(pupilX + r * .14, pupilY - r * .19, Math.max(1, r * .13), Math.max(1, r * .13), '#fffef9');
@@ -113,10 +114,14 @@ export function buildChickMarkup(options: ChickRenderOptions = {}): ChickMarkup 
   const direction = options.direction ?? 'right';
   const phase = options.phase ?? (pose === 'hatch' || pose === 'grow' ? 1 : 0);
   const base = buildGeometry(genes, stage);
-  const baseFrame = poseFrame(base, pose, phase);
+  const baseFrame = poseFrame(base, pose, phase, options.reaction);
   const front = direction === 'front' ? 1 : baseFrame.front;
   const geometry = front > 0 ? buildGeometry(genes, stage, front) : base;
-  const frame = poseFrame(geometry, pose, phase);
+  const frame = poseFrame(geometry, pose, phase, options.reaction);
+  if (pose === 'held') {
+    const motion = Math.max(-1, Math.min(1, Number.isFinite(options.motion) ? options.motion! : 0));
+    frame.headAngle -= motion * 7; frame.wingAngle -= Math.abs(motion) * 14; frame.tailAngle -= motion * 14;
+  }
   frame.closedEyes ||= options.blink === true;
   const { body, head, anchors: a } = geometry;
   const colors = genes.colors;
@@ -128,6 +133,8 @@ export function buildChickMarkup(options: ChickRenderOptions = {}): ChickMarkup 
     ? direction === 'left' ? phase >= .5 : phase < .5
     : direction === 'left';
   const mirror = reverse ? 'translate(320 0) scale(-1 1)' : '';
+  const gaze = options.gaze ? { x: options.gaze.x * (reverse ? -1 : 1), y: options.gaze.y } : undefined;
+  if (gaze && ['idle', 'look', 'tap'].includes(pose)) frame.headAngle += Math.max(-1, Math.min(1, gaze.y)) * 4;
   const eyeLeft = { x: lerp(a.eyeLeft.x, head.center.x - head.width * .18, front), y: a.eyeLeft.y };
   const eyeRight = { x: lerp(a.eyeRight.x, head.center.x + head.width * .18, front), y: a.eyeRight.y };
   const beakRoot = { x: lerp(a.beakRoot.x, head.center.x, front), y: lerp(a.beakRoot.y, head.center.y + head.height * .19, front) };
@@ -141,8 +148,8 @@ export function buildChickMarkup(options: ChickRenderOptions = {}): ChickMarkup 
   const nearRadius = geometry.eyeRadius;
   const headContents = path(head.path, colors.head, outline) + markings(head, genes, headClip, true)
     + (CRESTS[genes.crestShape] ? group(path(CRESTS[genes.crestShape], colors.head, outline), `transform="${move(a.crestRoot)} scale(${n(crestScale)})" class="chick-v2-crest"`) : '')
-    + eye(eyeRight, nearRadius, lerp(.76, 1, front), frame.closedEyes, genes, front < .7, front > .7)
-    + eye(eyeLeft, nearRadius, 1, frame.closedEyes, genes, false, front > .7)
+    + eye(eyeRight, nearRadius, lerp(.76, 1, front), frame.closedEyes, genes, front < .7, front > .7, gaze)
+    + eye(eyeLeft, nearRadius, 1, frame.closedEyes, genes, false, front > .7, gaze)
     + beak(genes, beakRoot, front, frame.openBeak, head.width / 87)
     + (genes.detailVariant === 3 ? path(`M${n(head.center.x - head.width * .18)} ${n(head.center.y + head.height * .21)}l5 3m-2 -7l5 3`, 'none', `stroke="${colors.beak}" stroke-width="2.4" stroke-linecap="round" opacity=".7"`) : '');
   const headTransform = `translate(${n(frame.headOffsetX)} ${n(frame.headOffset)}) rotate(${n(frame.headAngle)} ${n(a.neck.x)} ${n(a.neck.y)})`;
@@ -162,7 +169,7 @@ export function buildChickMarkup(options: ChickRenderOptions = {}): ChickMarkup 
     + (front > 0 ? group(farWing, `opacity="${n(front)}"`) : '') + wing;
   torso = group(torso, `class="chick-v2-breath" style="transform-origin:${n(a.neck.x)}px ${n(a.neck.y)}px"`);
   bird += group(torso, `transform="translate(0 ${n(frame.bodyOffset)})" class="chick-v2-upper-body"`);
-  const shadow = options.shadow === false || pose === 'flap' || pose === 'hit' ? '' : ellipse(160, 284, body.width * .4, 6, '#292f2a', 'opacity=".13" class="chick-shadow"');
+  const shadow = options.shadow === false || pose === 'flap' || pose === 'hit' || pose === 'held' ? '' : ellipse(160, 284, body.width * .4, 6, '#292f2a', 'opacity=".13" class="chick-shadow"');
   const grain = pose === 'feed' ? group(ellipse(236, 280, 3, 1.9, '#b49560') + ellipse(247, 277, 2.8, 1.7, '#b49560') + ellipse(245, 286, 2.3, 1.5, '#b49560'), 'class="chick-v2-grain"') : '';
   const sleep = pose === 'sleep' ? group(path('M250 128h10l-10 10h10M268 108h7l-7 7h7', 'none', `stroke="${colors.legs}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`), 'class="chick-sleep-marks"') : '';
   const shell = pose === 'hatch' ? group(path('M94 255L107 247L120 262L135 251L151 263L167 251L184 263L200 250L220 257Q209 293 157 294Q107 290 94 255Z', '#ece7da', outline) + path('M98 255L76 263L79 274L102 269Z', '#ece7da', outline) + path('M223 249L241 244L249 257L231 264Z', '#ece7da', outline), 'class="chick-v2-shell"') : '';

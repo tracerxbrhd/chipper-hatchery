@@ -174,9 +174,12 @@ export function FlapsGame({ attempt, busy, reducedMotion, sound = false, haptics
   const playing = status === 'playing';
   return <section className="flaps-game" data-phase={status} data-flaps-state={status} data-chick-id={attempt.chickId} aria-label="Chippster Flaps">
     <div className="flaps-toolbar">
-      <button type="button" className="flaps-round-button" aria-label="Выйти из Chippster Flaps" disabled={busy} onClick={() => loopRef.current?.leave()}><span aria-hidden="true">‹</span></button>
-      <h1>Chippster Flaps</h1>
-      <button type="button" className="flaps-round-button" aria-label="Пауза" disabled={!playing} onClick={() => loopRef.current?.pause()}><span aria-hidden="true">Ⅱ</span></button>
+      <div className="native-hud-primary"><h1>Chippster Flaps</h1></div>
+      <div className="flaps-controls">
+        <button type="button" className="flaps-round-button" aria-label="Выйти из Chippster Flaps" disabled={busy} onClick={() => loopRef.current?.leave()}><span aria-hidden="true">‹</span></button>
+        <div className="flaps-score" aria-live="polite" aria-atomic="true"><span>Очки</span><strong>{score}</strong></div>
+        <button type="button" className="flaps-round-button" aria-label="Пауза" disabled={!playing} onClick={() => loopRef.current?.pause()}><span aria-hidden="true">Ⅱ</span></button>
+      </div>
     </div>
     <div className="flaps-stage" ref={stageRef}>
       <div className="flaps-surface" ref={surfaceRef} role="application" aria-label="Игровое поле Chippster Flaps" aria-describedby="flaps-instructions" tabIndex={0}
@@ -186,7 +189,6 @@ export function FlapsGame({ attempt, busy, reducedMotion, sound = false, haptics
         }}
         onKeyDown={event => { if (isFlapKey(event)) { event.preventDefault(); loopRef.current?.tap(); } }}>
         <canvas ref={canvasRef} aria-label="Полёт активного цыплёнка" aria-hidden="true" />
-        <div className="flaps-score" aria-live="polite" aria-atomic="true"><span>Очки</span><strong>{score}</strong></div>
         {status === 'ready' && <div className="flaps-ready"><span className="flaps-ready-mark" aria-hidden="true">↑</span><h2>Полетим?</h2><p>Коснитесь поля, чтобы взмахнуть.<br />Летите через проёмы.</p><small>Ваш пилот — {attempt.chick.name}</small></div>}
         {status === 'loading' && <div className="flaps-overlay" role="status"><span className="spinner" /><p>Готовим крылья…</p></div>}
         {status === 'paused' && !leaveConfirm && <div className="flaps-overlay" onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}><div className="flaps-overlay-card"><h2>Полёт на паузе</h2><p>Цыплёнок ждёт. Таймер попытки продолжает идти.</p><button className="button primary" onClick={() => loopRef.current?.resume()}>Продолжить полёт</button><button className="button text-button" onClick={() => loopRef.current?.leave()}>Выйти</button></div></div>}

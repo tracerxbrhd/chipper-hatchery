@@ -24,7 +24,7 @@
 .egg-art--hatching .egg-shell { animation:chipper-hatch .55s ease-in-out infinite; }
 .egg-crack { stroke:var(--art-shell-outline,#5e655a); stroke-width:2.8; stroke-linecap:round; stroke-linejoin:round; }
 .egg-sparkles { animation:chipper-dream 1.2s ease-in-out infinite; }
-[data-theme='dark'] { --art-halo:#43463d; --art-shadow:#11150f; --art-mark:#c4b99d; --art-shell:#d5d0bd; --art-shell-outline:#b4b6a6; --art-nest:#a59c86; }
+[data-theme='dark'] { --art-halo:#293a36; --art-shadow:#101617; --art-mark:#c4b99d; --art-shell:#d5d0bd; --art-shell-outline:#b4b6a6; --art-nest:#a59c86; }
 @keyframes chipper-v2-breathe { 0%,100% { transform:scaleY(1); } 50% { transform:scaleY(1.012); } }
 @keyframes chipper-v2-blink { 0%,37%,40%,82%,86%,100% { transform:scaleY(1); } 38.2%,39% { transform:scaleY(.06); } 83.5%,84.3% { transform:scaleY(.06); } }
 @keyframes chipper-v2-arrive { 0% { opacity:0; transform:scale(.75) translateY(6px); } 65% { opacity:1; transform:scale(1.025); } 100% { opacity:1; transform:scale(1); } }
@@ -38,3 +38,5 @@
 .reduce-motion .chick-art *, .reduce-motion .egg-art *,
 [data-motion='off'] .chick-art *, [data-motion='off'] .egg-art * { animation:none !important; transition:none !important; }
 @media (prefers-reduced-motion:reduce) { .chick-art *, .egg-art * { animation:none !important; transition:none !important; } }
+
+.chick-art:is(.chick-art--held,.chick-art--stroke,.chick-art--tap,.chick-art--land) .chick-v2-breath{animation:none}

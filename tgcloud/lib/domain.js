@@ -1,10 +1,11 @@
 /** Chipper's deterministic rules. No platform or browser dependencies. */
 import { CHICK_PRESETS, generateGenes, validGenes } from './chickGenes.js';
-import { FLAPS_CONFIG, maximumPlausibleScore } from './flapsRules.js';
+import { maximumPlausibleScore } from './flapsRules.js';
+import { FLAPS_GAME_ID, gameConfig, migrateGameRecords, recordGameCompletion } from './gameRegistry.js';
 const HOUR = 60 * 60 * 1000;
 
 export const BALANCE = Object.freeze({
-  version: '0.2.0',
+  version: '0.3.0',
   hourMs: HOUR,
   careCooldownMs: 4 * HOUR,
   careCycleWindowMs: 30 * 60 * 1000,
@@ -50,8 +51,8 @@ const PARAMS = Object.freeze({
   buyEgg: [],
   startMiniGame: [],
   finishMiniGame: ['attemptId', 'score'],
-  startFlapsRun: [],
-  finishFlapsRun: ['runId', 'score', 'endReason'],
+  startFlapsRun: ['gameId'],
+  finishFlapsRun: ['gameId', 'runId', 'score', 'endReason'],
   logEvent: ['event', 'details'],
 });
 
@@ -117,6 +118,12 @@ export function validateRequest(method, input) {
     canonical.action = params.action;
   }
   if (method === 'renameChick') canonical.name = normalizeName(params.name);
+  if (method === 'startFlapsRun' || method === 'finishFlapsRun') {
+    if (!gameConfig(params.gameId)) throw new GameError('UNKNOWN_GAME', 'Эта игра пока недоступна.');
+    // The default is implicit in the canonical fingerprint so receipts issued
+    // by 0.2 still match both old callers and explicit 0.3 Flaps callers.
+    if (params.gameId !== undefined && params.gameId !== FLAPS_GAME_ID) canonical.gameId = params.gameId;
+  }
   if (method === 'finishMiniGame') {
     canonical.attemptId = requireId(params.attemptId);
     if (!Number.isSafeInteger(params.score) || params.score < 0 || params.score > 500) {
@@ -126,7 +133,7 @@ export function validateRequest(method, input) {
   }
   if (method === 'finishFlapsRun') {
     canonical.runId = requireId(params.runId);
-    if (!Number.isSafeInteger(params.score) || params.score < 0 || params.score > 10000) {
+    if (!Number.isSafeInteger(params.score) || params.score < 0 || params.score > gameConfig(params.gameId).antiAbuse.maxScore) {
       throw new GameError('INVALID_SCORE', 'Некорректный результат Chippster Flaps.');
     }
     if (!['crash', 'bounds'].includes(params.endReason)) {
@@ -206,6 +213,7 @@ export function createInitialState(telegramId, now, id) {
     receipts: {},
     telemetry: { totals: {}, days: {}, errors: [], clientWindowAt: now, clientWindowCount: 0 },
   };
+  migrateGameRecords(state.player);
   state.eggs.push({ id: newId(state, id), kind: 'starter', createdAt: now, readyAt: now, chickId: null });
   recordEvent(state, 'onboarding_started', now);
   return state;
@@ -223,6 +231,7 @@ export function stageFor(chick, now) {
 
 /** Apply elapsed server time once. Inactive birds preserve their three needs. */
 export function reconcileState(state, now) {
+  migrateGameRecords(state.player);
   for (const chick of state.chicks) {
     const active = chick.id === state.player.activeChickId;
     const previous = Math.min(now, chick.lastComputedAt);
@@ -264,6 +273,7 @@ export function snapshot(state, revision, now) {
       hunger: chick.hunger, mood: chick.mood, energy: chick.energy,
       lastFeedAt: chick.lastFeedAt, lastPlayAt: chick.lastPlayAt,
       sleepUntil: chick.sleepUntil, careMilestones: [...chick.careMilestones],
+      ...(reservedGiftId(state, chick.id, now) ? { reservedGiftId: reservedGiftId(state, chick.id, now) } : {}),
     })),
     egg: currentEgg ? { id: currentEgg.id, kind: currentEgg.kind, createdAt: currentEgg.createdAt, readyAt: currentEgg.readyAt } : null,
   };
@@ -292,11 +302,18 @@ export function validateStateVersion(state) {
   }
 }
 
-function ownChick(state, chickId, requireActive = false) {
+function reservedGiftId(state, chickId, now) {
+  return state.gifts?.find((gift) => gift.chick?.id === chickId && gift.status === 'pending' && gift.expiresAt > now)?.giftId ?? null;
+}
+
+function ownChick(state, chickId, requireActive = false, now = null) {
   const chick = state.chicks.find((entry) => entry.id === chickId);
   if (!chick) throw new GameError('CHICK_NOT_FOUND', 'Цыплёнок не найден в вашей коллекции.');
   if (requireActive && state.player.activeChickId !== chick.id) {
     throw new GameError('CHICK_NOT_ACTIVE', 'Сначала сделайте этого цыплёнка активным.');
+  }
+  if (now !== null && reservedGiftId(state, chickId, now)) {
+    throw new GameError('CHICK_RESERVED', 'Цыплёнок ожидает принятия подарка. Сначала отмените предложение.');
   }
   return chick;
 }
@@ -393,7 +410,7 @@ export function applyMutation(state, method, params, { now, random, id }) {
     }
     case 'careAction': return care(state, params, now);
     case 'activateChick': {
-      const chick = ownChick(state, params.chickId);
+      const chick = ownChick(state, params.chickId, false, now);
       if (state.player.activeChickId !== chick.id) {
         state.player.activeChickId = chick.id;
         // Reconciliation has already applied the old bird's elapsed time and
@@ -404,7 +421,7 @@ export function applyMutation(state, method, params, { now, random, id }) {
       return {};
     }
     case 'renameChick': {
-      ownChick(state, params.chickId).name = params.name;
+      ownChick(state, params.chickId, false, now).name = params.name;
       return {};
     }
     case 'buyEgg': {
@@ -420,31 +437,37 @@ export function applyMutation(state, method, params, { now, random, id }) {
     case 'finishMiniGame':
       throw new GameError('GAME_REPLACED', 'Теперь здесь Chippster Flaps. Обновите Mini App.');
     case 'startFlapsRun': {
+      const config = gameConfig(params.gameId);
       if (state.chicks.length === 0) throw new GameError('FIRST_HATCH_REQUIRED', 'Сначала помогите цыплёнку вылупиться.');
       const chick = ownChick(state, state.player.activeChickId, true);
-      const recent = state.attempts.filter((attempt) => attempt.startedAt > now - BALANCE.miniGameStartWindowMs);
-      if (recent.length >= BALANCE.miniGameStartLimit) {
-        const retryAt = Math.min(...recent.map((attempt) => attempt.startedAt)) + BALANCE.miniGameStartWindowMs;
+      const recent = state.attempts.filter((attempt) => (attempt.gameId ?? FLAPS_GAME_ID) === config.gameId
+        && attempt.startedAt > now - config.antiAbuse.startWindowMs);
+      if (recent.length >= config.antiAbuse.startLimit) {
+        const retryAt = Math.min(...recent.map((attempt) => attempt.startedAt)) + config.antiAbuse.startWindowMs;
         throw new GameError('RATE_LIMITED', 'Подождите немного перед новым раундом.', { retryable: true, retryAt });
       }
       // One unfinished attempt prevents trivial mass creation. A new round may
       // explicitly supersede an abandoned one, without modifying sleep or care.
-      for (const attempt of state.attempts) if (attempt.finishedAt === null) attempt.cancelled = true;
+      for (const attempt of state.attempts) {
+        if ((attempt.gameId ?? FLAPS_GAME_ID) === config.gameId && attempt.finishedAt === null) attempt.cancelled = true;
+      }
       // Receipts remain permanent; a pruned run cannot pay again with a fresh
       // operation key. Rate limiting retains every start inside its window.
       state.attempts = state.attempts.filter((attempt) => now <= attempt.expiresAt);
-      const attempt = { kind: 'flaps', id: newId(state, id), chickId: chick.id,
+      const attempt = { kind: 'flaps', gameId: config.gameId, id: newId(state, id), chickId: chick.id,
         chick: snapshot(state, 0, now).chicks.find((entry) => entry.id === chick.id),
-        configVersion: FLAPS_CONFIG.configVersion, startedAt: now,
-        expiresAt: now + BALANCE.miniGameAttemptTtlMs, finishedAt: null,
+        configVersion: config.configVersion, startedAt: now,
+        expiresAt: now + config.antiAbuse.attemptTtlMs, finishedAt: null,
         cancelled: false, score: null, endReason: null, result: null };
       state.attempts.push(attempt);
       recordEvent(state, 'flaps_started', now);
-      return { runId: attempt.id, chickId: attempt.chickId, chick: clone(attempt.chick),
+      return { gameId: config.gameId, runId: attempt.id, chickId: attempt.chickId, chick: clone(attempt.chick),
         startedAt: attempt.startedAt, expiresAt: attempt.expiresAt, configVersion: attempt.configVersion };
     }
     case 'finishFlapsRun': {
-      const attempt = state.attempts.find((entry) => entry.kind === 'flaps' && entry.id === params.runId);
+      const config = gameConfig(params.gameId);
+      const attempt = state.attempts.find((entry) => entry.kind === 'flaps' && entry.id === params.runId
+        && (entry.gameId ?? FLAPS_GAME_ID) === config.gameId);
       if (!attempt) throw new GameError('ATTEMPT_NOT_FOUND', 'Начните новый раунд игры.');
       ownChick(state, attempt.chickId);
       if (attempt.finishedAt !== null) {
@@ -459,24 +482,13 @@ export function applyMutation(state, method, params, { now, random, id }) {
       if (params.score > maximumPlausibleScore(elapsed)) {
         throw new GameError('INVALID_SCORE', 'Такой счёт невозможен за время этого раунда.');
       }
-      const previousBest = state.player.flaps.bestScore;
-      const tooShort = elapsed < BALANCE.miniGameMinDurationMs;
-      const rewarded = !tooShort && available(state.player.miniGameRewardAt, now);
       attempt.finishedAt = now;
       attempt.score = params.score;
       attempt.endReason = params.endReason;
-      if (rewarded) {
-        state.player.feathers += 1;
-        state.player.miniGameRewardAt = now;
+      attempt.result = recordGameCompletion(state.player, config, { score: params.score, now, durationMs: elapsed });
+      if (attempt.result.rewarded) {
         recordEvent(state, 'flaps_reward_claimed', now);
       }
-      state.player.flaps.bestScore = Math.max(previousBest, params.score);
-      state.player.flaps.completedRuns += 1;
-      state.player.flaps.lastPlayedAt = now;
-      attempt.result = { score: params.score, previousBest, bestScore: state.player.flaps.bestScore,
-        newBest: params.score > previousBest, rewarded,
-        rewardNextAt: available(state.player.miniGameRewardAt, now) ? null : state.player.miniGameRewardAt + BALANCE.rewardCooldownMs,
-        reason: rewarded ? 'rewarded' : tooShort ? 'too_short' : 'cooldown' };
       recordEvent(state, 'flaps_finished', now);
       return clone(attempt.result);
     }

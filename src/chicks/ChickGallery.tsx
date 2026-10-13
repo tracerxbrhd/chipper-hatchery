@@ -6,7 +6,7 @@ import type { Stage } from '../types';
 import './gallery.css';
 
 const STAGES: Stage[] = ['baby', 'teen', 'adult'];
-const POSES: ChickPose[] = ['idle', 'walk', 'turn', 'look', 'preen', 'feed', 'play', 'sleep', 'wake', 'flap', 'hit', 'hatch', 'grow'];
+const POSES: ChickPose[] = ['idle', 'walk', 'turn', 'look', 'preen', 'peck', 'yawn', 'tap', 'stroke', 'held', 'land', 'feed', 'play', 'sleep', 'wake', 'flap', 'hit', 'hatch', 'grow'];
 
 /** Loaded by the DEV route only, entirely absent from the production bundle. */
 export default function ChickGallery() {
@@ -34,7 +34,7 @@ export default function ChickGallery() {
   }, [animate, pose]);
   const chick = { ...PREVIEW_CHICKS[selected]!, stage };
   return <main className={`chick-gallery ${narrow ? 'chick-gallery--narrow' : ''}`} data-theme={theme}>
-    <header><p>Chipper 0.2 · каталог разработчика</p><h1>Chick System 2.0</h1><p>30 оригинальных персонажей × 3 возраста. Один renderer для Дома и Chippster Flaps.</p></header>
+    <header><p>Chipper 0.3 · каталог разработчика</p><h1>Chick System 2.0 · Touchy Feel</h1><p>30 оригинальных персонажей × 3 возраста. Один renderer для Дома и Chippster Flaps.</p></header>
     <section className="gallery-tools">
       <label>Тема<select aria-label="Тема" value={theme} onChange={(event) => setTheme(event.target.value)}><option value="light">Светлая</option><option value="dark">Тёмная</option></select></label>
       <label>Поза<select aria-label="Поза" value={pose} onChange={(event) => setPose(event.target.value as ChickPose)}>{POSES.map((value) => <option key={value}>{value}</option>)}</select></label>

@@ -15,7 +15,7 @@
 .home-screen .care-button strong{font-size:12px;line-height:1.2}
 .home-screen .care-button small{font-size:10px;line-height:1.2}
 .home-screen .care-summary{flex:none;position:relative;z-index:5;margin-top:0}
-.home-screen .care-summary-toggle{display:flex;align-items:center;gap:9px;width:100%;min-height:42px;padding:8px 11px;background:var(--paper);border:1px solid var(--line);border-radius:16px;text-align:left;color:var(--muted)}
+.home-screen .care-summary-toggle{display:flex;align-items:center;gap:9px;width:100%;min-height:44px;padding:8px 11px;background:var(--paper);border:1px solid var(--line);border-radius:16px;text-align:left;color:var(--muted)}
 .home-screen .care-summary-toggle>svg{flex:none;width:18px;color:var(--accent)}
 .home-screen .care-summary-text{flex:1;min-width:0;font-size:10px;line-height:1.4;display:flex;flex-direction:column}
 .home-screen .care-summary-text strong{font-size:11px;color:var(--ink);font-weight:600}
@@ -25,17 +25,17 @@
 .home-screen .care-tip-popover h2{font-size:14px;margin:0 0 6px}
 .home-screen .care-tip-popover p{font-size:12px;line-height:1.5;margin:0;color:var(--muted)}
 .living-world{flex:1;min-height:110px;position:relative;isolation:isolate;overflow:hidden;touch-action:none;outline-offset:-4px;border-radius:24px;contain:layout paint}
-.living-world--still{touch-action:manipulation}
+.living-world--still{touch-action:none}
 .world-light{position:absolute;inset:5% 12% 12%;background:radial-gradient(ellipse at 48% 30%,var(--world-glow,#ffffff50),transparent 66%);pointer-events:none}
 .world-ground{position:absolute;left:0;top:50%;width:100%;height:43%;pointer-events:none;overflow:visible}
-.world-ground-base{fill:var(--world-ground,#deded2)}
-.world-ground-contour{fill:none;stroke:var(--world-edge,#bebfae);stroke-width:1.5;opacity:.45}
-.world-ground-trail{fill:none;stroke:var(--world-edge,#bebfae);stroke-width:1.2;stroke-dasharray:1 8;stroke-linecap:round;opacity:.28}
+.world-ground-base{fill:var(--world-ground,#e2e9df)}
+.world-ground-contour{fill:none;stroke:var(--world-edge,#a8bcad);stroke-width:1.5;opacity:.45}
+.world-ground-trail{fill:none;stroke:var(--world-edge,#a8bcad);stroke-width:1.2;stroke-dasharray:1 8;stroke-linecap:round;opacity:.28}
 .world-shadow{position:absolute;z-index:2;border-radius:50%;background:#20251e;pointer-events:none;will-change:transform}
 .world-chick-action{position:absolute;z-index:3;display:block;padding:0;border:0;background:none;color:inherit;border-radius:48%;transform-origin:50% 88.125%;will-change:transform;touch-action:none;pointer-events:none;outline-offset:-35px;-webkit-tap-highlight-color:transparent}
 .world-chick-action:disabled{opacity:1;cursor:default}
 .world-chick-action .chick-art{display:block;width:100%;height:100%;pointer-events:none;overflow:visible}
-.world-sprig{position:absolute;width:30px;height:28px;fill:none;stroke:var(--world-grass,#89936d);stroke-width:2;stroke-linecap:round;pointer-events:none}
+.world-sprig{position:absolute;width:30px;height:28px;fill:none;stroke:var(--world-grass,#72937e);stroke-width:2;stroke-linecap:round;pointer-events:none}
 .world-sprig--back{left:17%;top:53%;width:21px;height:23px;z-index:1;opacity:.6;transform:rotate(-12deg)}
 .world-sprig--front{right:17%;bottom:12%;z-index:4;transform:rotate(8deg);opacity:.8}
 .world-pebble{position:absolute;border-radius:70% 50% 35% 40%;background:var(--world-stone,#b2b5a8);pointer-events:none}
@@ -50,9 +50,9 @@
 .world-food i:nth-child(5){left:17px;top:0;transform:rotate(14deg)}
 .world-heart{position:absolute;left:57%;top:23%;color:var(--accent);z-index:4;font-size:25px;pointer-events:none;animation:world-heart 1.8s ease-out both}
 .world-instructions{position:absolute;bottom:1px;left:5px;right:5px;font-size:10px;text-align:center;line-height:1.5;letter-spacing:.01em;color:var(--muted);opacity:.8;pointer-events:none}
-[data-theme=dark] .living-world{--world-ground:#343930;--world-edge:#72785f;--world-grass:#a4af82;--world-stone:#59604f;--world-glow:#bdcaa810}
+[data-theme=dark] .living-world{--world-ground:#243036;--world-edge:#647e76;--world-grass:#9ab592;--world-stone:#52615f;--world-glow:#b8d1aa0c}
 @keyframes world-heart{0%{transform:translateY(10px) scale(.7);opacity:0}25%{opacity:1}100%{transform:translateY(-20px) scale(1.05);opacity:0}}
-@media(max-height:620px){.home-screen .home-heading{min-height:40px}.home-screen .home-heading-note{display:none}.home-screen .pet-title h1{font-size:22px}.home-screen .stage-label{font-size:10px}.home-screen .needs{margin:5px 0 8px}.home-screen .care-button{min-height:68px;padding:8px 3px;gap:4px}.home-screen .care-button svg{width:20px;height:20px}.home-screen .care-summary-toggle{min-height:40px;padding:6px 10px}.home-screen .care-summary-text{font-size:9px}.world-instructions{font-size:9px}}
+@media(max-height:620px){.home-screen .home-heading{min-height:40px}.home-screen .home-heading-note{display:none}.home-screen .pet-title h1{font-size:22px}.home-screen .stage-label{font-size:10px}.home-screen .needs{margin:5px 0 8px}.home-screen .care-button{min-height:68px;padding:8px 3px;gap:4px}.home-screen .care-button svg{width:20px;height:20px}.home-screen .care-summary-toggle{min-height:44px;padding:6px 10px}.home-screen .care-summary-text{font-size:9px}.world-instructions{font-size:9px}}
 @media(max-width:340px){.home-screen .care-button strong{font-size:11px}.home-screen .care-button small{font-size:9px}.home-screen .need-label{font-size:10px}.home-screen .care-actions{gap:6px}.home-screen .care-summary-text strong{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.world-heart{animation:none}.home-screen .care-summary-chevron,.world-food{transition:none}.world-shadow,.world-chick-action{will-change:auto}}
 .reduce-motion .world-heart{animation:none}
@@ -64,3 +64,9 @@
 .reduce-motion .world-chick-action[data-growing=true] .world-chick-visual{animation:none}
 
 .world-chick-action .chick-art :is(path,ellipse,circle,line,polyline,polygon,rect){pointer-events:visiblePainted}
+
+.living-world[data-gesture=hold] .world-chick-action{cursor:grab}
+.living-world:is([data-gesture=held],[data-gesture=drag]) .world-chick-action{cursor:grabbing}
+.living-world[data-read-only=true]{touch-action:pan-y}
+.world-chick-action:focus-visible{outline:2px solid var(--accent);outline-offset:-24px}
+[data-theme=dark] .world-chick-action :is(.chick-v2-breath>path:first-of-type,.chick-v2-head>path:first-child,.chick-v2-tail>path){stroke:#d7e4da;stroke-opacity:.2}

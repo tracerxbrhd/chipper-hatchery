@@ -1,0 +1,12 @@
+{
+  "kind": "local Chromium153 synthetic Telegram smoke; not physical-device FPS or signed live evidence",
+  "durationMs": 5000,
+  "initialNodes": 160,
+  "finalNodes": 160,
+  "frames": 298,
+  "frameIntervalP95Ms": 16.80000000000001,
+  "longTaskCount": 0,
+  "maxLongTaskMs": 0,
+  "hiddenSampleMs": 300,
+  "hiddenRafScheduled": 0
+}

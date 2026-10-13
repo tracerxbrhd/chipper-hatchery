@@ -2,8 +2,10 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEve
 import { webApp } from '../api/telegram';
 import { ChickArt } from '../components/ChickArt';
 import type { Chick } from '../types';
-import { createWorldModel, greetWorldChick, setWorldTarget, startWorldCare, startWorldGrowth, stepWorld, worldFrame, type WorldFrame } from './worldEngine';
+import { cancelWorldTouch, createWorldModel, dragWorldChick, greetWorldChick, lookWorldChick, pickupWorldChick, releaseWorldChick, setWorldTarget, startWorldCare, startWorldGrowth, stepWorld, strokeWorldChick, worldFrame, type WorldFrame } from './worldEngine';
 import { projectWorld, WORLD_FOOD, WORLD_HOME, worldPointFromPointer, worldSeed } from './worldMath';
+import { beginTouch, finishTouch, holdTouch, HOLD_MS, moveTouch, type TouchGesture, type TouchSession } from './touchGestures';
+import { boundWorldPoint, clamp } from './worldMath';
 import './world.css';
 
 export interface HomeWorldProps {
@@ -13,10 +15,12 @@ export interface HomeWorldProps {
   actionKey?: string | number;
   now?: number;
   sleeping?: boolean;
+  readOnly?: boolean;
+  onTouchFeedback?: (kind: string) => void;
 }
 
 /** A local actor on a projected ground plane. Server actions are the sole care authority. */
-export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Date.now(), sleeping: sleepingOverride }: HomeWorldProps) {
+export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Date.now(), sleeping: sleepingOverride, readOnly = false, onTouchFeedback }: HomeWorldProps) {
   const instructionsId = useId();
   const surface = useRef<HTMLDivElement>(null);
   const actor = useRef<HTMLButtonElement>(null);
@@ -24,7 +28,15 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   const model = useRef(createWorldModel(worldSeed(chick.id)));
   const [frame, setFrame] = useState<WorldFrame>(() => worldFrame(model.current));
   const [size, setSize] = useState(220);
-  const dimensions = useRef({ width: 360, size: 220 });
+  const dimensions = useRef({ width: 360, height: 300, size: 220 });
+  const session = useRef<TouchSession | null>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const capture = useRef<HTMLButtonElement | null>(null);
+  const pickupOrigin = useRef({ point: { ...WORLD_HOME }, lift: 0 });
+  const [gesture, setGesture] = useState<TouchGesture>('idle');
+  const [transient, setTransient] = useState(false);
+  const suppressClick = useRef(false);
+  const lastPointerPoseAt = useRef(0);
   const [visible, setVisible] = useState(() => !document.hidden && webApp()?.isActive !== false);
   const sleeping = sleepingOverride ?? (chick.sleepUntil !== null && chick.sleepUntil > now);
   const sleepingRef = useRef(sleeping);
@@ -38,13 +50,14 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     if (actor.current) {
       actor.current.style.left = `${projected.x}%`;
       actor.current.style.top = `${projected.y}%`;
-      actor.current.style.transform = `translate(-50%, -88.125%) scale(${projected.scale})`;
+      actor.current.style.transform = `translate(-50%, -88.125%) translateY(${-next.lift}px) scale(${projected.scale}) rotate(${animate && next.mode === 'held' ? -next.motion * 4 : 0}deg)`;
+      actor.current.dataset.lift = String(next.lift);
     }
     if (shadow.current) {
       shadow.current.style.left = `${projected.x}%`;
       shadow.current.style.top = `${projected.y}%`;
-      shadow.current.style.transform = `translate(-50%, -50%) scale(${projected.scale})`;
-      shadow.current.style.opacity = String(projected.shadowOpacity);
+      shadow.current.style.transform = `translate(-50%, -50%) scale(${projected.scale * (1 - Math.min(.25, next.lift / 200))})`;
+      shadow.current.style.opacity = String(projected.shadowOpacity * (1 - Math.min(.5, next.lift / 120)));
     }
   }
 
@@ -55,7 +68,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
       const { width, height } = node.getBoundingClientRect();
       // The silhouette stays legible on short viewports while keeping its head inside the scene.
       const measuredSize = Math.max(95, Math.min(300, width * .78, height * .92));
-      dimensions.current = { width, size: measuredSize };
+      dimensions.current = { width, height, size: measuredSize };
       setSize(measuredSize);
     };
     measure();
@@ -65,6 +78,8 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   }, []);
 
   useEffect(() => {
+    cancelGesture();
+    previousStage.current = chick.stage;
     model.current = createWorldModel(worldSeed(chick.id));
     const initial = stepWorld(model.current, 0, sleepingRef.current);
     frameRef.current = initial;
@@ -74,6 +89,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
 
   useEffect(() => {
     sleepingRef.current = sleeping;
+    if (sleeping) cancelGesture();
     const next = stepWorld(model.current, 0, sleeping);
     frameRef.current = next;
     setFrame(next);
@@ -81,8 +97,13 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   }, [sleeping]);
 
   useEffect(() => {
+    if (readOnly) cancelGesture();
+  }, [readOnly]);
+
+  useEffect(() => {
     if (previousStage.current === chick.stage) return;
     previousStage.current = chick.stage;
+    cancelGesture();
     if (!sleepingRef.current && startWorldGrowth(model.current)) {
       const next = worldFrame(model.current);
       frameRef.current = next;
@@ -92,31 +113,59 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   }, [chick.stage]);
 
   useEffect(() => {
-    if (action === 'idle' || sleepingRef.current) return;
+    if (sleepingRef.current) return;
+    if (action === 'idle') {
+      // A still world has no ambient clock to finish care. Once the server
+      // action's presentation ends, it must become available for touch again.
+      if (!animate && ['feed', 'play', 'grow'].includes(model.current.mode)) {
+        model.current.mode = 'idle'; model.current.target = null; model.current.feeding = false;
+        model.current.stateTime = 0;
+        const next = worldFrame(model.current);
+        frameRef.current = next; setFrame(next); draw(next);
+      }
+      return;
+    }
+    cancelGesture();
     if (action === 'grow') startWorldGrowth(model.current);
     else startWorldCare(model.current, action);
     const next = worldFrame(model.current);
     frameRef.current = next;
     setFrame(next);
     draw(next);
-  }, [action, actionKey]);
+  }, [action, actionKey, animate]);
 
   useEffect(() => {
     const app = webApp();
-    const show = () => setVisible(!document.hidden && app?.isActive !== false);
-    const hide = () => setVisible(false);
+    const show = () => {
+      const active = !document.hidden && app?.isActive !== false;
+      if (!active) cancelGesture();
+      setVisible(active);
+    };
+    const hide = () => { cancelGesture(); setVisible(false); };
+    const blur = () => cancelGesture();
+    const secondPointer = (event: globalThis.PointerEvent) => {
+      if (session.current && event.pointerId !== session.current.pointerId) cancelGesture();
+    };
+    window.addEventListener('blur', blur);
+    document.addEventListener('pointerdown', secondPointer, true);
     document.addEventListener('visibilitychange', show);
     app?.onEvent('activated', show);
     app?.onEvent('deactivated', hide);
     return () => {
       document.removeEventListener('visibilitychange', show);
+      window.removeEventListener('blur', blur);
+      document.removeEventListener('pointerdown', secondPointer, true);
+      clearHold();
+      releaseCapture();
+      session.current = null;
+      cancelWorldTouch(model.current);
       app?.offEvent('activated', show);
       app?.offEvent('deactivated', hide);
     };
   }, []);
 
   useEffect(() => {
-    if (!animate || !visible) return;
+    if (!visible || (!animate && !transient)) return;
     let request = 0;
     let previous: number | null = null;
     let lastPoseAt = 0;
@@ -128,6 +177,13 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
       const projected = projectWorld(model.current.position);
       const stride = dimensions.current.size * projected.scale / 320 * (16 / .6) / Math.max(1, dimensions.current.width * .78);
       const next = stepWorld(model.current, delta, sleepingRef.current, stride);
+      if (!session.current && ['tap', 'stroke', 'land'].includes(gesture) && !['tap', 'stroke', 'land'].includes(next.mode)) setGesture('idle');
+      if (!animate && !['held', 'land', 'tap', 'stroke'].includes(next.mode)) {
+        setTransient(false);
+        draw(next);
+        frameRef.current = next; setFrame(next);
+        return;
+      }
       draw(next);
       if (timestamp - lastPoseAt >= 1000 / 30 || next.pose !== frameRef.current.pose) {
         lastPoseAt = timestamp;
@@ -138,7 +194,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     };
     request = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(request);
-  }, [animate, visible]);
+  }, [animate, visible, transient, gesture]);
 
   const publish = () => {
     const next = worldFrame(model.current);
@@ -146,26 +202,143 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     setFrame(next);
     draw(next);
   };
-  const approach = (event: PointerEvent<HTMLDivElement>) => {
-    if (!animate || !visible || event.button !== 0) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const target = worldPointFromPointer(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height);
-    if (target && setWorldTarget(model.current, target)) { event.preventDefault(); publish(); }
-  };
-  const keyApproach = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || !animate || !visible) return;
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      if (setWorldTarget(model.current, WORLD_HOME)) publish();
+  const publishPointer = () => {
+    // Drag translation is imperative; pointer frequencies must not redraw the SVG at 60–120 Hz.
+    const next = worldFrame(model.current);
+    draw(next);
+    const timestamp = performance.now();
+    if (timestamp - lastPointerPoseAt.current >= 1000 / 30) {
+      lastPointerPoseAt.current = timestamp;
+      frameRef.current = next; setFrame(next);
     }
   };
-  const greet = () => {
-    if (!visible || sleepingRef.current) return;
-    if (greetWorldChick(model.current)) publish();
+  const approach = (event: PointerEvent<HTMLDivElement>) => {
+    if (readOnly || !visible || sleepingRef.current || event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const target = worldPointFromPointer(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height);
+    if (target && setWorldTarget(model.current, target)) {
+      event.preventDefault();
+      if (!animate) { model.current.position = target; model.current.target = null; model.current.mode = 'look'; }
+      publish();
+    }
+  };
+  const keyApproach = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || readOnly || !visible) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (setWorldTarget(model.current, WORLD_HOME)) {
+        if (!animate) { model.current.position = { ...WORLD_HOME }; model.current.target = null; model.current.mode = 'look'; }
+        publish();
+      }
+    }
+  };
+  function clearHold() {
+    if (holdTimer.current !== null) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  }
+  function releaseCapture() {
+    const node = capture.current;
+    const pointerId = session.current?.pointerId;
+    capture.current = null;
+    session.current = null;
+    if (node && pointerId !== undefined && node.hasPointerCapture(pointerId)) node.releasePointerCapture(pointerId);
+  }
+  function cancelGesture() {
+    clearHold();
+    releaseCapture();
+    session.current = null;
+    cancelWorldTouch(model.current);
+    setGesture('idle');
+    setTransient(false);
+    const next = worldFrame(model.current);
+    frameRef.current = next; setFrame(next); draw(next);
+  }
+  function maxLift(point = model.current.position) {
+    const d = dimensions.current;
+    const projected = projectWorld(point);
+    // Actual head/crest start below the transparent top of the shared viewBox.
+    return Math.max(0, Math.min(d.height * .42, projected.y / 100 * d.height - d.size * projected.scale * .76 - 6));
+  }
+  function pickup() {
+    const active = session.current;
+    if (!active || !holdTouch(active, performance.now()) || sleepingRef.current || readOnly || !visible) return;
+    const lift = Math.min(38, dimensions.current.size * .18, maxLift());
+    if (!pickupWorldChick(model.current, lift)) { cancelGesture(); return; }
+    pickupOrigin.current = { point: { ...model.current.position }, lift };
+    if (!animate) model.current.lift = lift;
+    setGesture('held'); setTransient(true);
+    onTouchFeedback?.('pickup'); publish();
+  }
+  const touchDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (readOnly || !visible || event.button !== 0 || event.isPrimary === false || sleepingRef.current) return;
+    if (session.current) { cancelGesture(); return; }
+    if (['feed', 'play', 'grow', 'wake', 'land'].includes(model.current.mode)) return;
+    event.preventDefault(); suppressClick.current = true;
+    session.current = beginTouch(event.pointerId, { x: event.clientX, y: event.clientY }, performance.now());
+    capture.current = event.currentTarget;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    model.current.target = null;
+    if (['walk', 'turn'].includes(model.current.mode)) model.current.mode = 'idle';
+    setGesture('hold'); publish();
+    holdTimer.current = setTimeout(pickup, HOLD_MS + 1);
+  };
+  const touchMove = (event: PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const active = session.current;
+    if (!active || event.pointerId !== active.pointerId) return;
+    event.preventDefault();
+    const kind = moveTouch(active, { x: event.clientX, y: event.clientY });
+    if (kind === 'stroke') {
+      clearHold(); strokeWorldChick(model.current); setGesture('stroke'); setTransient(true);
+      if (!animate) publishPointer();
+    } else if (kind === 'held' || kind === 'drag') {
+      const d = dimensions.current;
+      const dx = event.clientX - active.start.x;
+      const dy = event.clientY - active.start.y;
+      const point = boundWorldPoint({ u: pickupOrigin.current.point.u + dx / Math.max(1, d.width * .78), v: pickupOrigin.current.point.v + dy / Math.max(1, d.height * .31) });
+      const originalGround = projectWorld(pickupOrigin.current.point).y / 100 * d.height;
+      const ground = projectWorld(point).y / 100 * d.height;
+      const lift = clamp(pickupOrigin.current.lift + ground - originalGround - dy, 0, maxLift(point));
+      dragWorldChick(model.current, point, lift);
+      if (!animate) { model.current.position = point; model.current.lift = lift; }
+      setGesture(kind);
+      if (!animate) publishPointer();
+    }
+  };
+  const touchUp = (event: PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const active = session.current;
+    if (!active || event.pointerId !== active.pointerId) return;
+    event.preventDefault(); clearHold();
+    const kind = finishTouch(active);
+    releaseCapture(); session.current = null;
+    if (kind === 'land') releaseWorldChick(model.current);
+    else if (kind === 'stroke') strokeWorldChick(model.current);
+    else greetWorldChick(model.current);
+    setGesture(kind); setTransient(true); onTouchFeedback?.(kind); publish();
+  };
+  const gaze = (event: PointerEvent<HTMLDivElement>) => {
+    if (!visible || session.current || sleepingRef.current) return;
+    const rect = actor.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = (event.clientX - rect.x - rect.width / 2) / Math.max(1, rect.width * .7);
+    const y = (event.clientY - rect.y - rect.height / 2) / Math.max(1, rect.height * .7);
+    lookWorldChick(model.current, x, y);
+    if (!animate) publishPointer();
+  };
+  const greet = (detail: number) => {
+    if (detail !== 0 && suppressClick.current) { suppressClick.current = false; return; }
+    if (!visible || readOnly || sleepingRef.current) return;
+    if (greetWorldChick(model.current)) { setGesture('tap'); setTransient(true); onTouchFeedback?.('tap'); publish(); }
   };
   const projected = projectWorld(frame.position);
-  const reducedPose = sleeping ? 'sleep' : action === 'feed' || action === 'play' || action === 'grow' ? action : 'look';
-  return <div className={`living-world ${!animate ? 'living-world--still' : ''}`} ref={surface} onPointerDown={approach} onKeyDown={keyApproach} role="group" tabIndex={animate ? 0 : -1} aria-label={`Поляна: ${chick.name}`} aria-describedby={instructionsId} data-mode={frame.mode} data-running={animate && visible ? 'true' : 'false'}>
+  // Still care keeps its semantic pose even when the engine has a walk target.
+  // Tactile poses remain available; motion reduction never disables touch.
+  const tactilePose = ['held', 'land', 'tap', 'stroke'].includes(frame.pose);
+  const presentationPose = sleeping ? 'sleep' : animate || tactilePose ? frame.pose
+    : action === 'feed' || action === 'play' || action === 'grow' ? action : 'look';
+  return <div className={`living-world ${!animate ? 'living-world--still' : ''}`} ref={surface} onPointerDown={approach} onPointerMove={gaze} onPointerLeave={() => lookWorldChick(model.current, 0, 0)} onKeyDown={keyApproach} role="group" tabIndex={readOnly ? -1 : 0} aria-label={`Поляна: ${chick.name}`} aria-describedby={instructionsId} data-mode={frame.mode} data-gesture={gesture} data-read-only={String(readOnly)} data-running={animate && visible ? 'true' : 'false'}>
     <div className="world-light" aria-hidden="true" />
     <svg className="world-ground" viewBox="0 0 600 230" preserveAspectRatio="none" aria-hidden="true">
       <ellipse className="world-ground-base" cx="300" cy="115" rx="283" ry="93" />
@@ -176,12 +349,12 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     <span className="world-pebble world-pebble--back" aria-hidden="true" />
     <div className={`world-food ${frame.mode === 'feed' ? 'world-food--served' : ''}`} style={{ left: `${food.x}%`, top: `${food.y}%`, marginLeft: `${(frame.direction === 'left' ? -1 : 1) * size * (76 / 320) * projected.scale}px`, marginTop: `${-3 / 320 * size * projected.scale}px` }} aria-hidden="true"><i /><i /><i /><i /><i /></div>
     {frame.mode === 'play' && <span className="world-heart" style={{ left: `${projected.x + 8}%`, top: `calc(${projected.y}% - ${size * .57 * projected.scale}px)` }} aria-hidden="true">♡</span>}
-    <div className="world-shadow" ref={shadow} style={{ left: `${projected.x}%`, top: `${projected.y}%`, width: size * .37, height: Math.max(5, size * .035), opacity: projected.shadowOpacity, transform: `translate(-50%, -50%) scale(${projected.scale})` }} aria-hidden="true" />
-    <button className="world-chick-action" ref={actor} type="button" disabled={sleeping} data-growing={animate && visible && frame.mode === 'grow' ? 'true' : undefined} aria-label={`Погладить: ${chick.name}`} onPointerDown={event => event.stopPropagation()} onClick={greet} style={{ left: `${projected.x}%`, top: `${projected.y}%`, width: size, height: size, transform: `translate(-50%, -88.125%) scale(${projected.scale})` }}>
-      <div className="world-chick-visual"><ChickArt chick={chick} pose={animate ? frame.pose : reducedPose} direction={animate ? frame.direction : 'front'} phase={animate ? frame.phase : 0} animate={animate && visible} shadow={false} size={size} /></div>
+    <div className="world-shadow" ref={shadow} style={{ left: `${projected.x}%`, top: `${projected.y}%`, width: size * .37, height: Math.max(5, size * .035), opacity: projected.shadowOpacity * (1 - Math.min(.5, frame.lift / 120)), transform: `translate(-50%, -50%) scale(${projected.scale * (1 - Math.min(.25, frame.lift / 200))})` }} aria-hidden="true" />
+    <button className="world-chick-action" ref={actor} type="button" disabled={sleeping || readOnly} data-growing={animate && visible && frame.mode === 'grow' ? 'true' : undefined} aria-label={`Погладить: ${chick.name}`} onPointerDown={touchDown} onPointerMove={touchMove} onPointerUp={touchUp} onPointerCancel={cancelGesture} onLostPointerCapture={() => { if (session.current) cancelGesture(); }} onClick={event => greet(event.detail)} style={{ left: `${projected.x}%`, top: `${projected.y}%`, width: size, height: size, transform: `translate(-50%, -88.125%) translateY(${-frame.lift}px) scale(${projected.scale}) rotate(${animate && frame.mode === 'held' ? -frame.motion * 4 : 0}deg)` }}>
+      <div className="world-chick-visual"><ChickArt chick={chick} pose={presentationPose} direction={frame.direction} phase={animate ? frame.phase : frame.pose === 'tap' || frame.pose === 'land' ? .5 : 0} reaction={frame.reaction} motion={animate ? frame.motion : 0} gaze={frame.gaze} animate={animate && visible} shadow={false} size={size} /></div>
     </button>
     <svg className="world-sprig world-sprig--front" viewBox="0 0 44 42" aria-hidden="true"><path d="M22 38V16m0 16C12 23 9 24 5 18m17 11c7-13 13-10 17-18m-17 11C19 10 22 9 25 5" /></svg>
     <span className="world-pebble world-pebble--front" aria-hidden="true" />
-    <span className="world-instructions" id={instructionsId}>{sleeping ? 'На поляне тихо и спокойно' : !animate ? 'Ваш маленький мир' : frame.mode === 'feed' ? 'Зёрнышки уже на поляне' : frame.mode === 'play' ? 'Как хорошо быть рядом' : 'Коснитесь поляны — позовите к себе'}</span>
+    <span className="world-instructions" id={instructionsId}>{readOnly ? 'В гостях — любуемся без забот и перемещений' : sleeping ? 'На поляне тихо и спокойно' : gesture === 'held' || gesture === 'drag' ? 'Отпустите — и птенец мягко приземлится' : gesture === 'stroke' ? 'Вот так, нежно' : frame.mode === 'feed' ? 'Зёрнышки уже на поляне' : frame.mode === 'play' ? 'Как хорошо быть рядом' : 'Погладьте птенца · задержите палец, чтобы поднять'}</span>
   </div>;
 }

@@ -1,42 +1,39 @@
-# Chipper 0.2 — Living Hatchery
+# Chipper 0.3 — Social & Feel Update
 
-Уютная Telegram Mini App для `@chipperhatcherybot`: один активный цыплёнок на живой 2.5D-площадке, полностью новая Chick System 2.0, инкубатор, коллекция и **Chippster Flaps**. Русский Liquid Glass интерфейс, светлая/тёмная тема и пять вкладок с Домом в центре. Питомцы не умирают; платежей, NFT и рекламы нет.
+Уютная Telegram Mini App для `@chipperhatcherybot`: один активный цыплёнок, коллекция, яйца и Chippster Flaps. Питомцы не умирают; платежей, NFT и рекламы нет. Версия 0.3 готовится к приёмке: **в этой среде не опубликована**, доступ к Telegram Serverless CLI отсутствует. Фактические результаты и ограничения — в [отчёте](DOCS/ACCEPTANCE_RESULT_0.3.md).
 
-V2 птицы отличаются формой головы/тела/лап/крыльев/хвоста/клюва, выражением и рисунком оперения. Три возраста сохраняют индивидуальные признаки. Дом показывает grounded walk, повороты и реакции; Flaps использует выбранного питомца, полёт, collision, личный рекорд и restart.
+Пять разделов: **Магазин · Коллекция · Дом · Активности · Профиль**. Магазин — честная витрина «Скоро»; яйца находятся в Коллекции. HUD занимает защищённый центр между нативными группами Telegram, баланс находится ниже. Док плавает над нижней safe area; тёмная тема — графит и шалфей.
 
-Сон 45 минут, яйца за 6 пёрышек с 3-часовой инкубацией, награда за заботу и Flaps по +1 раз в 20 часов. Редкость 70/25/5 исключительно косметическая. Таймеры, валюту, genes и владельца определяет сервер.
+Цыплёнка можно трогать, гладить, поднимать, переносить и мягко отпускать. Серверный сон и уход имеют приоритет. История роста позволяет увидеть уже пройденные стадии с теми же генами. Профили закрыты по умолчанию: владелец отдельно выбирает видимость профиля и коллекции, приглашает друзей, принимает запросы, блокирует нежелательные контакты, разрешает визиты и делится карточкой PNG/ссылкой. Подарок другу передаёт исходную птицу одним атомарным UPDATE двух коллекций; активную или последнюю птицу подарить нельзя.
 
-## Разработка и проверки
+Сон длится 45 минут, кормление и игра доступны раз в 4 часа, обычное яйцо стоит 6 пёрышек и согревается 3 часа. Награды за заботу и Flaps — по одному пёрышку раз в 20 часов, независимо друг от друга. Реестр игр переносит прежний рекорд и время награды без досрочной выплаты. Flaps остаётся единственной игрой; публичных рейтингов нет.
 
-Node.js 24 обязателен. Зависимости зафиксированы в package-lock.json.
+## Разработка
 
-```powershell
+Node.js 24; зависимости закреплены в package-lock.json.
+
+```bash
 npm ci
-Copy-Item .env.example .env.local
 npm run dev
 npm run check
 npx playwright install chromium
 npm run test:ui
 ```
 
-Локальная песочница явно обозначена и хранит синтетический профиль в `chipper-explicit-development-v2`. Она использует настоящую доменную логику, но не является Telegram-авторизацией/живой cloud SQLite. Production исключает dev adapter; `?mock`, localStorage и initDataUnsafe не открывают профиль. При установленном Chromium можно передать `CHIPPER_CHROMIUM_PATH` для UI тестов.
+Для явной локальной песочницы используйте `.env.example` → `.env.local`. Она хранит синтетический игровой профиль и исключается из production. Полный социальный цикл тестируется через production frontend и синтетический Telegram bridge с реальным SQLite, отдельно от signed Telegram-приёмки. Browser/fixture IDs никогда не дают доступ к живым аккаунтам.
 
-`check` включает TypeScript, Serverless syntax/imports, ESLint, Vitest, production build, отсутствие dev-кода и secret patterns. Тесты используют настоящий node:sqlite, контролируемые часы/RNG, конкуренцию CAS, V2 genes, Flaps и однократный reset. UI browser/synthetic bridge проверяется отдельно от signed Telegram acceptance.
+`check` проверяет TypeScript, runtime imports/syntax, lint, Vitest, сборку, dev isolation и секреты в файлах/Git. UI screenshots/perf обычного запуска находятся в игнорируемом `test-results/qa`; только намеренный запуск новых suites с `CHIPPER_CAPTURE_QA=1` обновляет [evidence 0.3](DOCS/qa/0.3). Исторические 0.2 screenshots не перезаписываются. Для имеющегося Chromium задайте `CHIPPER_CHROMIUM_PATH`.
 
-Обычные UI tests пишут screenshots/perf в игнорируемый `test-results/qa`, оставляя Git clean для release. `CHIPPER_CAPTURE_QA=1` намеренно обновляет канонические `DOCS/qa/0.2`: используйте только при ручном обновлении evidence до commit, затем уберите переменную перед release checks.
+## Релиз и данные
 
-## Сервер и выпуск
+React/TS/Vite + Telegram Serverless SQLite. Identity — verified `ctx.initData.user.id`; клиент не определяет владельца, валюту или права. Gameplay сохраняется revision-CAS с durable receipts. Подарок — один multi-row conditional UPDATE с MATERIALIZED guard обеих revisions, срока и действующей дружбы. Таблицы профилей, связей и лимитов добавляются штатной миграцией. Нет runtime DDL, последовательных delete/add или нового reset.
 
-React + TypeScript + Vite; JavaScript Telegram Serverless SDK и SQLite. Официальный Serverless.call передаёт verified initData; ownership проверяет сервер. Все эффекты и receipts одного игрока коммитятся одним UPDATE с revision CAS.
+Live URL предыдущего релиза: https://app8924974998.tgcloud.ai/. Последняя исторически подтверждённая revision 0.2 — 3, текущая cloud revision **не проверена**. Completed receipt `chipper-v0.2-clean-start` сохраняется. **Никогда не запускайте reset повторно.** Гены, имена, птицы, яйца, баланс, care/Flaps cooldown и рекорд 0.2 сохраняются ленивой миграцией.
 
-**Beta 0.2 опубликована и однократный сброс завершён.** [Открыть Chipper](https://app8924974998.tgcloud.ai/), бот @chipperhatcherybot/App 8924974998, текущая cloud revision **3**. Владелец выполнил reset из source **`cb4e83ac619435f09dc7969364c90defe18b5407`**: все **3 старых игровых профиля** очищены, completed receipt сохранён; final dry-run players 0/legacy 0/V2=0/alreadyApplied=true. Webhookin-sync,23 modules и3 static filesup-to-date. Игровой code source 7fd, схема source  c2f; final docs commit только фиксирует результат.
+Порядок безопасного выпуска и точные команды — [DEPLOYMENT_0.3.md](DOCS/DEPLOYMENT_0.3.md). Перед write нужны CLI login, getMe exact 8924974998/@chipperhatcherybot, read-only preflight, fetch/status/diff, проверенный source SHA и reviewed additive dry-run. После первой передачи птицы backend 0.2 нельзя считать безопасным rollback: исправлять вперёд, не удаляя social/gift history. Ветка0.3 открывается одним PR в main; merge выполняет владелец.
 
-Проверки source cb4:186/186 unit,33/33 UI; [CI#28 SUCCESS](https://github.com/tracerxbrhd/chipper-hatchery/actions/runs/38361629720). Реальные signed onboarding/multi-account/mobile проверки остаются владельцу.
+## Документы
 
-Фиксированная операция `chipper-v0.2-clean-start` больше не запускается и её completed receipt никогда не удаляется. Ordinary deploy сохраняют V2 прогресс:build/check → fetch/status/diff/review → push, без reset/migration hooks. [Release runbook](DOCS/DEPLOYMENT_0.2.md), [фактическая evidence/receipt](DOCS/ACCEPTANCE_RESULT_0.2.md). Системные данные/секреты/сторонние ресурсы не удалялись. Legacy-only DELETE и separate completion CAS защищают новые V2 от replay; общей транзакции marker+DELETE не утверждается.
+[Контракт](DOCS/CONTRACT_0.3.md) · [Архитектура](DOCS/ARCHITECTURE_0.3.md) · [Реализация](DOCS/IMPLEMENTATION_0.3.md) · [Приёмка](DOCS/ACCEPTANCE_0.3.md) · [Результаты](DOCS/ACCEPTANCE_RESULT_0.3.md).
 
-## Приёмка
-
-[Реализация](DOCS/IMPLEMENTATION_0.2.md), [результаты](DOCS/ACCEPTANCE_RESULT_0.2.md), [матрица](DOCS/ACCEPTANCE_0.2.md), [контракт](DOCS/CONTRACT_0.2.md). Документы 0.1 оставлены историческими, без требований сохранять старые облики/прогресс в 0.2.
-
-Реальные gestures/keyboard/safe area Android/iOS и изоляцию A/B/C, A1/A2 проверяет владелец на своих Telegram аккаунтах. Score Flaps имеет sanity guard, но не полноценный античит. Durable receipts предотвращают replay; future compaction агрегата требует отдельного безопасного design.
+Android/iOS/desktop native chrome, real A/B/C и A1/A2, физические gestures/keyboard и Telegram sharing проверяет владелец. Browser tests этого не заменяют. Score Flaps остаётся casual statistic с sanity guard. Постоянные receipts и JSON-поиск входящих подарков подходят текущей бете; масштабирование требует отдельного проекта, сохраняющего идемпотентность.

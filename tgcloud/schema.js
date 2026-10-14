@@ -1,4 +1,4 @@
-import { table, integer, text, check, sql } from 'sdk/db';
+import { table, integer, text, check, sql, index } from 'sdk/db';
 
 // Logical players/chicks/eggs/rewards/receipts live in one JSON aggregate.
 // SQLite's single-statement conditional UPDATE is the transaction boundary.
@@ -29,3 +29,40 @@ export const releaseOperations = table('chipper_release_operations', {
   nonnegativePlannedPlayers: check('chipper_release_planned_nonnegative', sql`${columns.plannedLegacyPlayers} >= 0`),
   nonnegativeRemainingPlayers: check('chipper_release_remaining_nonnegative', sql`${columns.remainingLegacyPlayers} >= 0`),
 }));
+
+// v0.3 additions. The gameplay and completed v0.2 release rows are untouched.
+export const socialProfiles = table('chipper_social_profiles', {
+  telegramId: integer('telegram_id').primaryKey(),
+  publicId: text('public_id').notNull().unique(),
+  revision: integer('revision').notNull().default(0),
+  displayName: text('display_name').notNull(),
+  visibility: text('visibility').notNull().default('private'),
+  collectionVisibility: text('collection_visibility').notNull().default('private'),
+  inviteToken: text('invite_token').unique(),
+  shareToken: text('share_token').unique(),
+  receiptsJson: text('receipts_json').notNull().default('{}'),
+  updatedAt: integer('updated_at').notNull(),
+}, columns => ({
+  visibilityCheck: check('chipper_profile_visibility', sql`${columns.visibility} IN ('private','friends','public')`),
+  collectionCheck: check('chipper_collection_visibility', sql`${columns.collectionVisibility} IN ('private','friends','public')`),
+  revisionCheck: check('chipper_social_revision', sql`${columns.revision} >= 0`),
+}));
+export const friendships = table('chipper_friendships', {
+  pairKey: text('pair_key').primaryKey().notNull(),
+  friendshipId: text('friendship_id').notNull().unique(),
+  lowId: integer('low_id').notNull(), highId: integer('high_id').notNull(),
+  requestedBy: integer('requested_by').notNull(), status: text('status').notNull(),
+  lowBlocked: integer('low_blocked').notNull().default(0), highBlocked: integer('high_blocked').notNull().default(0),
+  revision: integer('revision').notNull().default(0), receiptsJson: text('receipts_json').notNull().default('{}'),
+  createdAt: integer('created_at').notNull(), updatedAt: integer('updated_at').notNull(),
+}, columns => ({
+  lowIndex: index('chipper_friend_low').on(columns.lowId), highIndex: index('chipper_friend_high').on(columns.highId),
+  pairCheck: check('chipper_friend_pair', sql`${columns.lowId} > 0 AND ${columns.highId} > ${columns.lowId}`),
+  requesterCheck: check('chipper_friend_requester', sql`${columns.requestedBy} IN (${columns.lowId},${columns.highId})`),
+  statusCheck: check('chipper_friend_status', sql`${columns.status} IN ('pending','accepted','declined','removed')`),
+  blockedCheck: check('chipper_friend_blocked', sql`${columns.lowBlocked} IN (0,1) AND ${columns.highBlocked} IN (0,1)`),
+}));
+export const socialLimits = table('chipper_social_limits', {
+  key: text('key').primaryKey().notNull(), windowStart: integer('window_start').notNull(), count: integer('count').notNull(),
+  seenJson: text('seen_json').notNull().default('{}'),
+}, columns => ({ countCheck: check('chipper_social_limit_count', sql`${columns.count} >= 0`) }));

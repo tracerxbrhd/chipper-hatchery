@@ -73,6 +73,7 @@ export function createGameService({ store, now = Date.now, random = serverRandom
           const serverNow = state.updatedAt;
           let result;
           if (!isReadMethod(method)) {
+            if (Object.hasOwn(state.giftReceipts ?? {}, params.operationId)) throw new GameError('OPERATION_CONFLICT', 'Этот ключ операции уже использован для другого действия.');
             const fingerprint = requestFingerprint(method, params);
             const receipt = Object.hasOwn(state.receipts, params.operationId) ? state.receipts[params.operationId] : null;
             if (receipt) {

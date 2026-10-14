@@ -7,6 +7,7 @@ export { FlapsGame } from '../games/flaps/FlapsGame';
 export { requestFlapsLeave } from '../games/flaps/input';
 
 export interface GameAttempt {
+  gameId?: 'chippster-flaps';
   runId: string;
   chickId: string;
   startedAt: number;
@@ -15,6 +16,7 @@ export interface GameAttempt {
   chick: Chick;
 }
 export interface GameResult {
+  gameId?: 'chippster-flaps';
   score: number;
   bestScore: number;
   previousBest: number;
@@ -26,8 +28,9 @@ export interface GameResult {
 
 export function Activities({ state, now, busy, reducedMotion, onStart }: ViewProps & { state: Snapshot; onStart: () => void }) {
   const chick = state.chicks.find(item => item.id === state.player.activeChickId);
-  const rewardIn = rewardReadyAt(state.player.miniGameRewardAt) - now;
-  const bestScore = state.player.flaps?.bestScore ?? 0;
+  const record = state.player.games?.['chippster-flaps'];
+  const rewardIn = rewardReadyAt(record?.lastRewardAt ?? state.player.miniGameRewardAt) - now;
+  const bestScore = record?.bestScore ?? state.player.flaps?.bestScore ?? 0;
   return <section className="activities-screen flaps-activities">
     <p className="eyebrow">Активности</p><h1>Расправим крылья</h1><p className="intro">Небольшое приключение с вашим цыплёнком.</p>
     <article className="flaps-invite">
@@ -39,7 +42,7 @@ export function Activities({ state, now, busy, reducedMotion, onStart }: ViewPro
       <div className="flaps-invite-best"><Icon name="play" /><span>Личный рекорд</span><strong>{bestScore}</strong></div>
       <button className="button primary" disabled={busy || !chick} onClick={onStart}>{busy ? 'Готовим полёт…' : 'Играть'}</button>
     </article>
-    <section className="quiet-card reward-note"><Icon name="feather" /><div><h2>{rewardIn > 0 ? `Пёрышко через ${duration(rewardIn)}` : '+1 пёрышко за завершённый полёт'}</h2><p>Награда раз в 20 часов. Играть и улучшать рекорд можно в любое время.</p></div></section>
+    <section className="quiet-card reward-note"><Icon name="feather" /><div><h2>{rewardIn > 0 ? `Пёрышко через ${duration(rewardIn)}` : '+1 пёрышко за завершённый полёт'}</h2><p>Награда Chippster Flaps раз в 20 часов. Уход имеет отдельную награду. Играть и улучшать рекорд можно в любое время.</p></div></section>
     {chick && isSleeping(chick, now) && <p className="screen-footnote">Пока цыплёнок отдыхает дома, здесь можно полетать в его компании.</p>}
   </section>;
 }

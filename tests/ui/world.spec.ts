@@ -79,7 +79,15 @@ test('reduced motion uses a still world with functional care', async ({ page }) 
   await page.waitForTimeout(150);
   expect(await page.locator('.world-chick-action').getAttribute('style')).toBe(before);
   await page.getByRole('button', { name: /Покормить/ }).click();
+  await expect(page.locator('.living-world')).toHaveAttribute('data-mode', 'feed');
+  await expect(page.locator('.living-world')).toHaveAttribute('data-running', 'false');
   await expect(page.locator('.world-chick-action .chick-art')).toHaveAttribute('data-pose', 'feed');
+  // When the brief care presentation ends, a still world must not remain stuck
+  // in its unclocked feed/walk state or suppress subsequent tactile reactions.
+  await expect(page.locator('.living-world')).toHaveAttribute('data-mode', 'idle');
+  await expect(page.locator('.world-chick-action .chick-art')).toHaveAttribute('data-pose', 'look');
+  await page.locator('.world-chick-action').press('Enter');
+  await expect(page.locator('.world-chick-action .chick-art')).toHaveAttribute('data-pose', 'tap');
   await page.getByRole('button', { name: /Спать/ }).click();
   await expect(page.locator('.world-chick-action .chick-art')).toHaveAttribute('data-pose', 'sleep');
 });

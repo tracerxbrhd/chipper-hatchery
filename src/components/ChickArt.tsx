@@ -18,6 +18,7 @@ export interface ChickArtProps {
   /** Transitional call compatibility; never invokes the removed 0.1 renderer. */
   appearanceId?: string; stage?: Stage; state?: ChickArtState;
   pose?: ChickPose; direction?: ChickDirection; phase?: number; shadow?: boolean;
+  reaction?: number; motion?: number; gaze?: { x: number; y: number };
   animate?: boolean; mood?: number; size?: number; className?: string; reducedMotion?: boolean;
 }
 
@@ -39,10 +40,11 @@ const stateToPose: Record<ChickArtState, ChickPose> = {
 
 /** One original V2 renderer for portraits, world and Flaps. */
 export function ChickArt({ chick, stage = 'baby', state = 'idle', pose, direction = 'right', phase, shadow = true,
-  animate = true, size = 280, className = '', reducedMotion = false }: ChickArtProps) {
+  animate = true, size = 280, className = '', reducedMotion = false, reaction, motion, gaze }: ChickArtProps) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const hidden = useSyncExternalStore(subscribeVisibility, readHidden, readServerHidden);
-  const initial = buildChickMarkup({ chick, stage, pose: pose ?? stateToPose[state], direction, phase, shadow, id });
+  const options = { chick, stage, pose: pose ?? stateToPose[state], direction, phase, shadow, id, reaction, motion, gaze };
+  const initial = buildChickMarkup(options);
   const fingerprint = geneFingerprint(initial.genes);
   // World updates replace the inner SVG. A clocked joint blink survives those updates,
   // while stationary portraits can use their CSS timing without any extra RAF.
@@ -50,7 +52,7 @@ export function ChickArt({ chick, stage = 'baby', state = 'idle', pose, directio
   const blinkTime = (Date.now() + fingerprint % 1300) % blinkPeriod;
   const blink = animate && !reducedMotion && !hidden && phase !== undefined
     && (blinkTime < 105 || (fingerprint % 3 === 0 && blinkTime > 195 && blinkTime < 270));
-  const rendered = blink ? buildChickMarkup({ chick, stage, pose: pose ?? stateToPose[state], direction, phase, shadow, id, blink }) : initial;
+  const rendered = blink ? buildChickMarkup({ ...options, blink }) : initial;
   const style = {
     '--chick-blink-duration': `${3.2 + (fingerprint % 4800) / 1000}s`,
     '--chick-blink-delay': `${-(fingerprint % 2400) / 1000}s`,
@@ -62,6 +64,7 @@ export function ChickArt({ chick, stage = 'baby', state = 'idle', pose, directio
     role="img" aria-label={rendered.label} data-appearance-version="2" data-stage={chick?.stage ?? stage}
     data-head={rendered.genes.headShape} data-body={rendered.genes.bodyShape} data-pattern={rendered.genes.pattern}
     data-state={state} data-pose={rendered.pose} data-direction={direction}
+    data-reaction={reaction}
     data-controlled={phase !== undefined ? 'true' : undefined}
     data-paused={hidden ? 'true' : undefined}
     data-reduced-motion={reducedMotion || !animate ? 'true' : undefined}

@@ -2,7 +2,12 @@ import { test, expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { seed, finishOnboarding, enterFlaps, storageKey, qaPath } from './fixtures';
 
-const tabs = ['Коллекция', 'Инкубатор', 'Дом', 'Активности', 'Профиль'];
+const tabs = ['Магазин', 'Коллекция', 'Дом', 'Активности', 'Профиль'];
+
+async function openEggs(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Коллекция', exact: true }).click();
+  await page.getByRole('tab', { name: /^Яйца/ }).click();
+}
 
 test('fresh V2 onboarding, care reward, reload, sleep, profile settings and incubator', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
@@ -22,7 +27,7 @@ test('fresh V2 onboarding, care reward, reload, sleep, profile settings and incu
   await page.getByRole('button', { name: 'Назад', exact: true }).click();
   await expect(page.locator('.profile-screen')).toBeVisible();
   await expect(page.locator('.app')).toHaveAttribute('data-motion', 'off');
-  await page.getByRole('button', { name: 'Инкубатор', exact: true }).click();
+  await openEggs(page);
   await expect(page.getByRole('button', { name: 'Ещё 5 пёрышек', exact: true })).toBeDisabled();
   await page.screenshot({ path: qaPath('incubator-light.png') });
   const genes = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).state.chicks[0], storageKey);
@@ -52,7 +57,7 @@ test('collection rename and activation preserve individual V2 genes in Home and 
 
 test('ready ordinary egg hatches once and retains the current active bird', async ({ page }) => {
   await seed(page, { readyEgg: true }); await page.goto('/');
-  await page.getByRole('button', { name: 'Инкубатор', exact: true }).click();
+  await openEggs(page);
   await page.getByRole('button', { name: 'Вылупить', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'В семье пополнение!' })).toBeVisible();
   await page.getByRole('button', { name: 'В коллекцию', exact: true }).click();
@@ -162,7 +167,7 @@ test('Living World approaches a field target and care cancels walking; preferenc
 });
 
 test('dev gallery shows 90 V2 age variants, morphology controls and dark 320px preview', async ({ page }) => {
-  await page.goto('/?art=1'); await expect(page.getByRole('heading', { name: 'Chick System 2.0', exact: true })).toBeVisible();
+  await page.goto('/?art=1'); await expect(page.getByRole('heading', { name: 'Chick System 2.0 · Touchy Feel', exact: true })).toBeVisible();
   await expect(page.locator('.gallery-age-row .chick-art')).toHaveCount(90);
   await page.getByLabel('Анимация', { exact: true }).uncheck(); await page.getByLabel('Поза', { exact: true }).selectOption('sleep');
   await page.getByLabel('Тема', { exact: true }).selectOption('dark'); await page.getByLabel('Ширина 320px', { exact: true }).check();

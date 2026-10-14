@@ -21,7 +21,7 @@ export const NEUTRAL_GENES: ChickGenesV2 = {
     tail: '#353634', marking: '#e5dfd0', beak: '#c8a46b', legs: '#8b7d66' },
 };
 
-export type ChickPose = 'idle' | 'walk' | 'turn' | 'look' | 'preen' | 'feed' | 'play' | 'sleep' | 'wake' | 'flap' | 'hit' | 'hatch' | 'grow';
+export type ChickPose = 'idle' | 'walk' | 'turn' | 'look' | 'preen' | 'peck' | 'yawn' | 'tap' | 'stroke' | 'held' | 'land' | 'feed' | 'play' | 'sleep' | 'wake' | 'flap' | 'hit' | 'hatch' | 'grow';
 export type ChickDirection = 'left' | 'right' | 'front';
 export type ChickVisual = Pick<Chick, 'stage'> & Partial<Pick<Chick, 'genes' | 'appearanceVersion' | 'id' | 'name'>>;
 export const STAGE_LABELS: Record<Stage, string> = { baby: 'Птенец', teen: 'Подросток', adult: 'Взрослая птица' };
@@ -29,6 +29,7 @@ export const POSE_LABELS: Record<ChickPose, string> = {
   idle: 'Спокойно стоит', walk: 'Гуляет', turn: 'Поворачивается', look: 'Присматривается', preen: 'Чистит перышки',
   feed: 'Клюёт корм', play: 'Играет', sleep: 'Спит', wake: 'Просыпается',
   flap: 'Летит', hit: 'Останавливает полёт', hatch: 'Вылупляется', grow: 'Подрастает',
+  peck: 'Исследует поляну', yawn: 'Зевает', tap: 'Отвечает на касание', stroke: 'Радуется поглаживанию', held: 'На руках', land: 'Мягко приземляется',
 };
 
 export function isValidGenes(value: unknown): value is ChickGenesV2 {

@@ -8,12 +8,35 @@ export const operation = (params = {}) => ({ ...params, operationId: randomUUID(
 export function fixture() {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec('CREATE TABLE chipper_players (telegram_id INTEGER PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0, state_json TEXT NOT NULL)');
+  // Additive v0.3 schema in real SQLite. Existing gameplay fixtures keep their
+  // identities/data; social QA uses the same statements as the SDK adapter.
+  sqlite.exec(`
+    CREATE TABLE chipper_social_profiles (
+      telegram_id INTEGER PRIMARY KEY, public_id TEXT NOT NULL UNIQUE,
+      revision INTEGER NOT NULL DEFAULT 0, display_name TEXT NOT NULL,
+      visibility TEXT NOT NULL DEFAULT 'private', collection_visibility TEXT NOT NULL DEFAULT 'private',
+      invite_token TEXT UNIQUE, share_token TEXT UNIQUE,
+      receipts_json TEXT NOT NULL DEFAULT '{}', updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE chipper_friendships (
+      pair_key TEXT PRIMARY KEY, friendship_id TEXT NOT NULL UNIQUE, low_id INTEGER NOT NULL, high_id INTEGER NOT NULL,
+      requested_by INTEGER NOT NULL, status TEXT NOT NULL,
+      low_blocked INTEGER NOT NULL DEFAULT 0, high_blocked INTEGER NOT NULL DEFAULT 0,
+      revision INTEGER NOT NULL DEFAULT 0, receipts_json TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE chipper_social_limits (
+      key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL,
+      seen_json TEXT NOT NULL DEFAULT '{}'
+    );
+  `);
   let time = 1791810000000;
   let roll = .1;
   let failAfterCommit = false;
   const yieldRequest = () => new Promise(resolve => setImmediate(resolve));
   const database = {
     async get(sql, params) { await yieldRequest(); return sqlite.prepare(sql).get(params ?? {}) ?? null; },
+    async all(sql, params) { await yieldRequest(); return sqlite.prepare(sql).all(params ?? {}); },
     async run(sql, params) {
       await yieldRequest();
       const statement = sqlite.prepare(sql);
@@ -29,7 +52,7 @@ export function fixture() {
   const store = createSqliteStore(database);
   const service = createGameService({ store, now: () => time, random: () => roll, id: randomUUID });
   return {
-    service, sqlite, store,
+    service, sqlite, store, database,
     get now() { return time; },
     advance(ms) { time += ms; },
     roll(value) { roll = value; },

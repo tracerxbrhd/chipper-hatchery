@@ -1,23 +1,27 @@
 /* Canvas scene: no per-frame layout, backdrop filter, React rendering or document scroll. */
 .flaps-game { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; gap: 8px; }
-.flaps-toolbar { flex: 0 0 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.flaps-toolbar h1 { margin: 0; font-size: clamp(16px, 4.6vw, 23px); letter-spacing: -.05em; }
+.flaps-toolbar { flex: 0 0 auto; display: flex; flex-direction: column; margin-top: max(env(safe-area-inset-top, 0px), var(--tg-chrome-top, 8px)); }
+.flaps-toolbar .native-hud-primary { margin-left: max(0px, calc(var(--tg-chrome-left, 12px) - 12px)); margin-right: max(0px, calc(var(--tg-chrome-right, 12px) - 12px)); }
+.flaps-toolbar h1 { margin: 0; font-size: clamp(14px, 4.3vw, 20px); letter-spacing: -.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 7px; }
+:root[data-hud='compact'] .flaps-toolbar h1 { font-size: 13px; padding: 0 3px; }
+:root[data-hud='mark'] .flaps-toolbar h1 { font-size: 11px; padding: 0 2px; }
+.flaps-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: var(--tg-chrome-clearance, 4px); min-height: 44px; }
 .flaps-round-button { display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--glass-outline, #aeb7a560); background: var(--glass-bg, #f0f1e8); color: var(--ink, var(--text)); font-size: 26px; }
 .flaps-round-button:disabled { opacity: .38; }
 .flaps-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
 .flaps-surface { position: relative; max-width: 100%; max-height: 100%; border: 1px solid var(--glass-outline, #aeb7a560); border-radius: 24px; overflow: hidden; isolation: isolate; touch-action: none; user-select: none; overscroll-behavior: none; background: #f2f0e8; box-shadow: 0 7px 26px #1b291f13; }
 .flaps-surface:focus-visible { outline: 3px solid var(--accent, #869b6e); outline-offset: 2px; }
 .flaps-surface canvas { display: block; width: 100%; height: 100%; }
-.flaps-score { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); display: grid; justify-items: center; pointer-events: none; line-height: 1; color: var(--text, #292d27); }
-.flaps-score span { font-size: 11px; text-transform: uppercase; letter-spacing: .15em; opacity: .7; }
-.flaps-score strong { margin-top: 6px; font-size: clamp(30px, 9vw, 46px); font-weight: 750; font-variant-numeric: tabular-nums; text-shadow: 0 2px 2px #ffffff55; }
+.flaps-score { display: flex; align-items: baseline; gap: 9px; pointer-events: none; line-height: 1; color: var(--ink); }
+.flaps-score span { font-size: 11px; letter-spacing: .04em; color: var(--muted); }
+.flaps-score strong { font-size: 28px; font-weight: 750; font-variant-numeric: tabular-nums; }
 .flaps-ready { pointer-events: none; position: absolute; left: 8%; right: 8%; top: 56%; text-align: center; color: var(--text, #292d27); }
 .flaps-ready h2 { font-size: clamp(18px, 5vw, 25px); letter-spacing: -.04em; margin: 6px 0; }
 .flaps-ready p { font-size: clamp(11px, 3.4vw, 14px); line-height: 1.5; margin: 0; }
 .flaps-ready small { display: block; margin-top: 12px; font-size: 10px; opacity: .7; }
 .flaps-ready-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid currentColor; font-size: 21px; opacity: .55; }
 .flaps-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px; background: #c6ccbc44; }
-.flaps-overlay-card { background: var(--surface, #f6f5ee); border: 1px solid var(--glass-outline, #aeb7a560); box-shadow: var(--glass-shadow, 0 18px 40px #1c281b26); border-radius: 24px; padding: 22px 18px; text-align: center; max-width: 340px; width: 100%; color: var(--text, #292d27); }
+.flaps-overlay-card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--glass-shadow, 0 18px 40px #1c281b26); border-radius: 24px; padding: 22px 18px; text-align: center; max-width: 340px; width: 100%; max-height: 100%; overflow-y: auto; color: var(--ink); }
 .flaps-overlay-card h2 { font-size: 23px; letter-spacing: -.045em; line-height: 1.1; margin: 0 0 12px; }
 .flaps-overlay-card p { font-size: 13px; line-height: 1.45; color: var(--muted, #64705d); margin: 0 0 17px; }
 .flaps-overlay-card .button { width: 100%; min-height: 44px; }
@@ -62,11 +66,10 @@
 .flaps-stat-note { font-size: 10px; color: var(--muted, #64705d); margin-top: 18px; line-height: 1.4; }
 .flaps-record .flaps-result-stats { animation: flaps-record-pop .38s ease-out both; }
 @keyframes flaps-record-pop { from { opacity: .5; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
-[data-theme='dark'] .flaps-invite-art { background: linear-gradient(130deg, #46533f77, #52604433); }
-[data-theme='dark'] .flaps-overlay { background: #1e292555; }
-[data-theme='dark'] .flaps-score strong { text-shadow: 0 2px 2px #00000044; }
+[data-theme='dark'] .flaps-invite-art { background: linear-gradient(130deg, #2b393f, #34473d66); }
+[data-theme='dark'] .flaps-overlay { background: #0d131880; }
 @media (pointer: fine) { .flaps-key-help { display: inline; } }
-@media (orientation: landscape) and (max-height: 600px) { .flaps-landscape-hint { display: block; }.flaps-footer { display: none; }.flaps-toolbar { flex-basis: 44px; }.flaps-game { gap: 3px; } }
+@media (orientation: landscape) and (max-height: 600px) { .flaps-landscape-hint { display: block; }.flaps-footer { display: none; }.flaps-game { gap: 3px; } }
 @media (max-height: 650px) { .flaps-toolbar h1 { font-size: 16px; }.flaps-game { gap: 4px; }.flaps-footer { font-size: 10px; }.flaps-invite-art { height: 190px; }.flaps-invite-art > svg { width: 190px; height: 190px; }.flaps-result-art { width: 170px; }.flaps-result-stats { margin: 0 0 14px; } }
 @media (prefers-reduced-motion: reduce) { .flaps-record .flaps-result-stats { animation: none; } }
 [data-motion='off'] .flaps-record .flaps-result-stats { animation: none; }

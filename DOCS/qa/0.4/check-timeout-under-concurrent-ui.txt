@@ -1,0 +1,49 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 check
+> npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-production.mjs && node scripts/check-secrets.mjs
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 typecheck
+> tsc -b && node scripts/check-server.mjs
+
+Serverless modules: syntax and runtime imports PASS
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 lint
+> eslint .
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 test
+> vitest run
+
+
+ RUN  v5.0.4 /workspace/scratch/d0f1040c67ed/chipper-hatchery
+
+ ❯ tests/tower-engine.test.ts (17 tests | 1 failed) 5804ms
+   ❯ Nest Defense canonical deterministic engine (17)
+     × 1000 seeded maps always provide continuous winding unique paths and reachable build sites 5075ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/tower-engine.test.ts > Nest Defense canonical deterministic engine > 1000 seeded maps always provide continuous winding unique paths and reachable build sites
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/tower-engine.test.ts:33:3
+     31|     expect(newTowerState(1)).toMatchObject({ hp: 10, coins: 120, phase…
+     32|   });
+     33|   it('1000 seeded maps always provide continuous winding unique paths …
+       |   ^
+     34|     const geometries = new Set<string>();
+     35|     for (let seed = 0; seed < 1000; seed++) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 39 passed (40)
+      Tests  1 failed | 468 passed (469)
+   Start at  10:59:38
+   Duration  51.77s (tests 97%, import 2%, transform 1%)
+

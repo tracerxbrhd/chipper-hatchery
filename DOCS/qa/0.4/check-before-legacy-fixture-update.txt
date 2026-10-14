@@ -1,0 +1,59 @@
+44c18a8473bf5266abf0f4efa0787f8f7ab7cbfa
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 check
+> npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-production.mjs && node scripts/check-secrets.mjs
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 typecheck
+> tsc -b && node scripts/check-server.mjs
+
+Serverless modules: syntax and runtime imports PASS
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 lint
+> eslint .
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.4.0 test
+> vitest run
+
+
+ RUN  v5.0.4 /workspace/scratch/d0f1040c67ed/chipper-hatchery
+
+stderr | tests/reset-v02.test.js > restricted SQL one-time Chipper 0.2 recovery on real SQLite > same former Telegram accounts restart onboarding, zero progress, starter egg and stable V2 hatch
+Chipper backend operation failed { method: 'bootstrap', code: 'INTERNAL' }
+
+ ❯ tests/reset-v02.test.js (33 tests | 1 failed) 74ms
+   ❯ restricted SQL one-time Chipper 0.2 recovery on real SQLite (33)
+     × same former Telegram accounts restart onboarding, zero progress, starter egg and stable V2 hatch 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/reset-v02.test.js > restricted SQL one-time Chipper 0.2 recovery on real SQLite > same former Telegram accounts restart onboarding, zero progress, starter egg and stable V2 hatch
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/reset-v02.test.js:311:28
+    309|       const ctx = { initData: { user: { id } } };
+    310|       const bootstrap = await service.call('bootstrap', {}, ctx);
+    311|       expect(bootstrap.ok).toBe(true);
+       |                            ^
+    312|       expect(bootstrap.state.player).toMatchObject({ feathers: 0, onbo…
+    313|       expect(bootstrap.state.chicks).toHaveLength(0); expect(bootstrap…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 40 passed (41)
+      Tests  1 failed | 473 passed (474)
+   Start at  11:07:43
+   Duration  46.61s (tests 98%, import 1%, transform 1%)
+

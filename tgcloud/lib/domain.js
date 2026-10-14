@@ -1,11 +1,13 @@
 /** Chipper's deterministic rules. No platform or browser dependencies. */
 import { CHICK_PRESETS, generateGenes, validGenes } from './chickGenes.js';
 import { maximumPlausibleScore } from './flapsRules.js';
+import { claimDailyBonus, dailyBonusStatus } from './dailyBonus.js';
+import { discoverOwnedTraits, discoverChickTraits, traitCodexStatus } from './traitCodex.js';
 import { FLAPS_GAME_ID, gameConfig, migrateGameRecords, recordGameCompletion } from './gameRegistry.js';
 const HOUR = 60 * 60 * 1000;
 
 export const BALANCE = Object.freeze({
-  version: '0.3.0',
+  version: '0.4.0',
   hourMs: HOUR,
   careCooldownMs: 4 * HOUR,
   careCycleWindowMs: 30 * 60 * 1000,
@@ -41,8 +43,9 @@ export function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-const READ_METHODS = ['bootstrap', 'getHome', 'listChicks', 'getIncubator'];
+const READ_METHODS = ['bootstrap', 'getHome', 'listChicks', 'getIncubator', 'getDailyBonus', 'listTraitCodex'];
 const PARAMS = Object.freeze({
+  claimDailyBonus: [],
   hatchEgg: ['eggId'],
   completeOnboarding: [],
   careAction: ['chickId', 'action'],
@@ -119,7 +122,7 @@ export function validateRequest(method, input) {
   }
   if (method === 'renameChick') canonical.name = normalizeName(params.name);
   if (method === 'startFlapsRun' || method === 'finishFlapsRun') {
-    if (!gameConfig(params.gameId)) throw new GameError('UNKNOWN_GAME', 'Эта игра пока недоступна.');
+    if (!gameConfig(params.gameId) || (params.gameId !== undefined && params.gameId !== FLAPS_GAME_ID)) throw new GameError('UNKNOWN_GAME', 'Эта игра пока недоступна.');
     // The default is implicit in the canonical fingerprint so receipts issued
     // by 0.2 still match both old callers and explicit 0.3 Flaps callers.
     if (params.gameId !== undefined && params.gameId !== FLAPS_GAME_ID) canonical.gameId = params.gameId;
@@ -232,6 +235,13 @@ export function stageFor(chick, now) {
 /** Apply elapsed server time once. Inactive birds preserve their three needs. */
 export function reconcileState(state, now) {
   migrateGameRecords(state.player);
+  state.balanceVersion = BALANCE.version;
+  discoverOwnedTraits(state);
+  // Finished run visual payload is duplicated in its permanent start receipt.
+  // Keep terminal IDs/results for fresh-key replay; never prune value fences.
+  for (const attempt of state.attempts) {
+    if (attempt.finishedAt !== null && now > attempt.expiresAt) delete attempt.chick;
+  }
   for (const chick of state.chicks) {
     const active = chick.id === state.player.activeChickId;
     const previous = Math.min(now, chick.lastComputedAt);
@@ -266,6 +276,8 @@ export function snapshot(state, revision, now) {
     serverNow: now,
     balanceVersion: state.balanceVersion,
     player: clone(state.player),
+    dailyBonus: dailyBonusStatus(state, now),
+    codex: traitCodexStatus(state),
     chicks: state.chicks.map((chick) => ({
       id: chick.id, appearanceId: chick.appearanceId, rarity: chick.rarity,
       appearanceVersion: 2, genes: clone(chick.genes),
@@ -342,6 +354,7 @@ function hatch(state, eggId, now, random, id) {
     lastComputedAt: now,
   };
   state.chicks.push(chick);
+  discoverChickTraits(state, chick);
   egg.chickId = chickId;
   if (state.player.activeChickId === null) state.player.activeChickId = chickId;
   if (egg.kind === 'starter') {
@@ -402,6 +415,7 @@ function care(state, params, now) {
 /** Mutate a cloned, reconciled aggregate; the service commits it with one CAS. */
 export function applyMutation(state, method, params, { now, random, id }) {
   switch (method) {
+    case 'claimDailyBonus': return claimDailyBonus(state, now);
     case 'hatchEgg': return hatch(state, params.eggId, now, random, id);
     case 'completeOnboarding': {
       if (state.chicks.length === 0) throw new GameError('FIRST_HATCH_REQUIRED', 'Сначала помогите цыплёнку вылупиться.');

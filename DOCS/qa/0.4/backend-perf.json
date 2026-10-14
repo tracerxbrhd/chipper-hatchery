@@ -1,0 +1,39 @@
+{
+  "evidence": "Node24 local CPU / in-memory real SQLite; synthetic records, not production-scale cloud or physical Android performance",
+  "runtime": "v24.19.0",
+  "flaps": {
+    "completedRuns": 100,
+    "aggregateBytes": 152117,
+    "permanentOperationReceipts": 202,
+    "retainedRecentAttempts": 10,
+    "terminalVisualPayloadsRemaining": 10,
+    "replayedOriginalStartAndFinishWithoutAdditionalEffect": true,
+    "limitation": "Permanent operation receipts remain unbounded; their original start result retains the bird snapshot for exact replay."
+  },
+  "giftIncomingLookup": {
+    "players": 101,
+    "samples": 50,
+    "p50Ms": 0.31427499999995234,
+    "p95Ms": 0.45723100000009254,
+    "maxMs": 0.6442339999999831,
+    "queryPlan": [
+      "SCAN p",
+      "CORRELATED SCALAR SUBQUERY 1",
+      "SCAN g VIRTUAL TABLE INDEX 3:"
+    ],
+    "limitation": "Existing correlated json_each remains a scan. No production-scale claim or index migration."
+  },
+  "towerReplay": {
+    "legalWaves": 25,
+    "totalSimulatedTicks": 6752,
+    "samples": 25,
+    "p50Ms": 0.8149219999999104,
+    "p95Ms": 1.7707660000000942,
+    "maxMs": 1.9266720000000532,
+    "maxCheckpointBytes": 5637,
+    "maxCommandsObserved": 16,
+    "commandsPerBatchLimit": 64,
+    "ticksPerBatchLimit": 1200,
+    "limitation": "Measured one legal seeded strategy; platform V8 CPU limit remains a live preflight check. Permanent compact claim/start fences remain unbounded; checkpoint transcripts do not enter player JSON."
+  }
+}

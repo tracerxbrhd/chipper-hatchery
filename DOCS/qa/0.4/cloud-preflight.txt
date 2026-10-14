@@ -1,0 +1,19 @@
+2026-10-14 UTC — read-only Serverless checks, no cloud writes
+Target from repository task: @chipperhatcherybot / App ID 8924974998.
+Actual current cloud identity/revision/schema cannot be verified without CLI authorization.
+
+npx tgcloud fetch
+exit 1: No CLI access token found for this project.
+Run "tgcloud login" to link a bot, or set TGCLOUD_TOKEN (for CI).
+
+npx tgcloud migrate --local --dry-run
+exit 1: No CLI access token found for this project.
+Run "tgcloud login" to link a bot, or set TGCLOUD_TOKEN (for CI).
+
+node scripts/preflight-v0.4.mjs --require-tower-schema
+exit 1: PREFLIGHT_CREDENTIALS_UNAVAILABLE: read-only preflight failed;
+no cloud writes or deployment performed.
+Use the official tgcloud login or TGCLOUD_TOKEN, then repeat this command.
+Temporary chipperV04PreflightTemporary.js cleanup verified.
+Credential directories were never manually read.
+Schema migration, push, webhook/URL post-deploy checks and signed A/B/C were not performed.

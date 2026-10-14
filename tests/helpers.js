@@ -30,6 +30,16 @@ export function fixture() {
       seen_json TEXT NOT NULL DEFAULT '{}'
     );
   `);
+  sqlite.exec(`CREATE TABLE chipper_tower_runs (
+    run_id TEXT PRIMARY KEY NOT NULL, telegram_id INTEGER NOT NULL, revision INTEGER NOT NULL DEFAULT 0,
+    seed INTEGER NOT NULL, config_version TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('active','settling','finished','expired')),
+    verified_wave INTEGER NOT NULL DEFAULT 0, checkpoint_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, last_activity_at INTEGER NOT NULL,
+    start_operation_id TEXT NOT NULL, last_operation_id TEXT, last_fingerprint TEXT, finish_reason TEXT, result_json TEXT
+  );
+  CREATE UNIQUE INDEX chipper_tower_start_key ON chipper_tower_runs(telegram_id,start_operation_id);
+  CREATE UNIQUE INDEX chipper_tower_one_active ON chipper_tower_runs(telegram_id) WHERE status IN ('active','settling');
+  CREATE INDEX chipper_tower_owner_status ON chipper_tower_runs(telegram_id,status,last_activity_at);`);
   let time = 1791810000000;
   let roll = .1;
   let failAfterCommit = false;
@@ -42,7 +52,7 @@ export function fixture() {
       const statement = sqlite.prepare(sql);
       if (/\bRETURNING\b/i.test(sql)) {
         const rows = statement.all(params ?? {});
-        if (failAfterCommit && rows.length) { failAfterCommit = false; throw new Error('lost response after commit'); }
+        if (failAfterCommit && rows.length && /UPDATE\s+chipper_players/i.test(sql)) { failAfterCommit = false; throw new Error('lost response after commit'); }
         return { rows, rowsAffected: rows.length, lastInsertRowid: 0 };
       }
       const result = statement.run(params ?? {});

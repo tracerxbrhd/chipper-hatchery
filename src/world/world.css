@@ -70,3 +70,11 @@
 .living-world[data-read-only=true]{touch-action:pan-y}
 .world-chick-action:focus-visible{outline:2px solid var(--accent);outline-offset:-24px}
 [data-theme=dark] .world-chick-action :is(.chick-v2-breath>path:first-of-type,.chick-v2-head>path:first-child,.chick-v2-tail>path){stroke:#d7e4da;stroke-opacity:.2}
+.world-guest{position:absolute;z-index:3;display:block;touch-action:none;transform-origin:50% 88.125%;pointer-events:none;will-change:transform}
+.world-guest .chick-art{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
+.world-guest .chick-art :is(path,ellipse,circle,line,polyline,polygon,rect){pointer-events:visiblePainted}
+.world-guest-label{position:absolute;bottom:17px;left:56%;right:3%;color:var(--muted);font-size:9px;line-height:1.3;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.living-world--pair .world-sprig--front{right:4%;bottom:28%;width:20px;height:20px;opacity:.6}
+.living-world--pair .world-pebble--front{left:10%}
+.living-world--still .world-guest,.reduce-motion .world-guest{will-change:auto}
+@media(prefers-reduced-motion:reduce){.world-guest{will-change:auto}}

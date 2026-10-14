@@ -1,13 +1,23 @@
-import { useState } from 'react';
-import type { CareAction, Chick, Snapshot, Stage } from '../types';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { DailyBonus } from '../community/DailyBonus';
+import type { CareAction, Chick, GuestChickDTO, Snapshot, Stage } from '../types';
 import { ChickArt } from '../components/ChickArt';
 import { getAppearanceLabel } from '../chicks/models';
 import { HomeWorld } from '../world/HomeWorld';
 import { ageText, birthText, duration, ru } from '../i18n';
 import { actionIcons, careReadyAt, Icon, isSleeping, NameForm, Needs, rewardReadyAt, type PetMotion, type Preferences, type ViewProps } from './Elements';
 
-export function Home({ state, motion, onCare, onCard, onTouchFeedback, ...view }: ViewProps & { state: Snapshot; motion: PetMotion; onCare: (action: CareAction) => void; onCard: (id: string) => void; onTouchFeedback?: (kind: string) => void }) {
+export function Home({ state, motion, onCare, onCard, onTouchFeedback, guest, guestControls, onDailyClaim, onDailyRefresh, ...view }: ViewProps & { state: Snapshot; motion: PetMotion; onCare: (action: CareAction) => void; onCard: (id: string) => void; onTouchFeedback?: (kind: string) => void; guest?: GuestChickDTO | null; guestControls?: ReactNode; onDailyClaim?: () => void; onDailyRefresh?: () => void }) {
   const [careTipOpen, setCareTipOpen] = useState(false);
+  const [dailyOpen, setDailyOpen] = useState(false);
+  const dailyRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!dailyOpen) return;
+    const close = (event: globalThis.PointerEvent) => { if (!dailyRoot.current?.contains(event.target as Node)) setDailyOpen(false); };
+    const escape = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') setDailyOpen(false); };
+    document.addEventListener('pointerdown', close); document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape); };
+  }, [dailyOpen]);
   const chick = state.chicks.find(item => item.id === state.player.activeChickId);
   if (!chick) return <div className="empty-state"><h1>{ru.emptyCollection}</h1><p>{ru.emptyCollectionBody}</p></div>;
   const sleeping = isSleeping(chick, view.now);
@@ -22,9 +32,9 @@ export function Home({ state, motion, onCare, onCard, onTouchFeedback, ...view }
   return <section className="home-screen">
     <div className="home-heading">
       <button className="pet-title" onClick={() => onCard(chick.id)}><h1>{chick.name}</h1><span className="stage-label">{ru.stage[chick.stage]} <span aria-hidden="true">↗</span></span></button>
-      <span className="home-heading-note">{ru.homeEyebrow}</span>
+      <div className="home-community-picker">{state.dailyBonus && onDailyClaim && <div className="home-daily-control" ref={dailyRoot}><button type="button" className={`home-daily-toggle ${state.dailyBonus.available ? 'is-available' : ''}`} aria-label="Ежедневный подарок" aria-expanded={dailyOpen} onClick={() => setDailyOpen(open => !open)}><Icon name="feather" size={20} /><span>{state.dailyBonus.available ? '+1' : '✓'}</span></button>{dailyOpen && <div className="home-daily-panel" role="region" aria-label="Ежедневный подарок"><DailyBonus bonus={state.dailyBonus} serverNow={view.now} busy={view.busy} onClaim={onDailyClaim} onRefresh={onDailyRefresh} /><button type="button" className="button text-button" onClick={() => setDailyOpen(false)}>Закрыть подарок</button></div>}</div>}{guestControls ?? <span className="home-heading-note">{ru.homeEyebrow}</span>}</div>
     </div>
-    <HomeWorld key={chick.id} chick={chick} animate={!view.reducedMotion} sleeping={sleeping || awaitingWake} now={view.now} action={action} actionKey={actionKey} onTouchFeedback={onTouchFeedback} />
+    <HomeWorld key={chick.id} chick={chick} animate={!view.reducedMotion} sleeping={sleeping || awaitingWake} now={view.now} action={action} actionKey={actionKey} onTouchFeedback={onTouchFeedback} guest={guest} />
     <div className="home-status">
       <p className="pet-status" aria-live="polite">{status}</p>
       {sleeping && <p className="timer-note">{ru.sleepRemaining} <strong>{duration((chick.sleepUntil ?? 0) - view.now)}</strong></p>}

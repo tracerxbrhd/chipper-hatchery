@@ -51,3 +51,5 @@ Incoming gifts всё ещё используют JSON scan: synthetic100/1000 p
 ## Итоговая проверка зафиксированного кода
 
 Code checkpoint `85116df54fc74b0b8213c6ed1b12b239e1256652`: `npm run check` —41files/474tests PASS; `npm run test:ui -- --workers=2` —79/79 PASS,2.3minutes. Node24.19.0, Chromium153.0.8010.0. Source/tree после проверки не менялся; последующие commits только docs/evidence. Bundle: base377.72kB(121.87kB gzip), lazyTD30.11kB(11.17kB gzip), CSS55.99+4.99kB. 98 actualPNG и84-ID mapping; signed/live approval отсутствует. Оба лог-файла содержат SHA первой строкой.
+
+Публикация GitHub: code commit `8676ae9b76fcf78dc5b5a9b875c4949dcc8f804c` имеет ровно тот же tree `62538178461948537fa02ae2d2750e2cc523e2bd`, что проверенный local85116df. Git CLI push не имел credentials; connector Git database API проверен по каждому blob SHA и обоим tree SHA. PR [#4](https://github.com/tracerxbrhd/chipper-hatchery/pull/4) открыт без merge; proof — [git-publish.json](qa/0.4/git-publish.json).

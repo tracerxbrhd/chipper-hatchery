@@ -1,6 +1,6 @@
 # Chipper 0.4 — безопасный выпуск в действующую бету
 
-**Проверенный code checkpoint:** `85116df54fc74b0b8213c6ed1b12b239e1256652`; check474/41 и full UI79/79 PASS. Последующие commits — только отчёты/evidence.
+**Проверенный code checkpoint:** `85116df54fc74b0b8213c6ed1b12b239e1256652`; check474/41 и full UI79/79 PASS. Опубликованный code commit `8676ae9b76fcf78dc5b5a9b875c4949dcc8f804c` с точно таким же tree `62538178461948537fa02ae2d2750e2cc523e2bd`; последующие commits — только отчёты/evidence. PR [#4](https://github.com/tracerxbrhd/chipper-hatchery/pull/4) открыт без merge.
 
 **Факт этой сессии:** `tgcloud fetch` и `tgcloud migrate --local --dry-run` воспроизвели `No CLI access token found for this project`. Ни migration, ни push, ни DB write не выполнялись. Cloud revision/getMe/schema/current completed receipt/URL/webhook не объявляются проверенными. Код и PR завершены независимо; реальные A/B/C выполняются после выпуска на авторизованной машине.
 

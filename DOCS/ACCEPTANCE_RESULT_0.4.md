@@ -10,8 +10,8 @@
 **READY для review и авторизованного beta preflight. Live release BLOCKED авторизацией.**
 
 - Base main: `6b8c1bb9e32a8ade6a65ff872d34f0e404a4d1f9`; повторный fetch подтвердил, что main не изменился.
-- Проверенный code checkpoint: **85116df54fc74b0b8213c6ed1b12b239e1256652**. Следующие commits содержат только отчёты/evidence; runtime/тесты неизменны.
-- PR: **PR_URL_PENDING** — `feature/chipper-v0.4 → main`, без merge.
+- Проверенный local code checkpoint: **85116df54fc74b0b8213c6ed1b12b239e1256652**; опубликованный code commit: **8676ae9b76fcf78dc5b5a9b875c4949dcc8f804c**. Их Git tree идентичен: **62538178461948537fa02ae2d2750e2cc523e2bd**. Git CLI не имел write credentials, поэтому публикация выполнена через подключённый GitHub с проверкой каждого blob/tree; изменились commit metadata, а не source. Последующие commits — только отчёты/evidence. [Git proof](qa/0.4/git-publish.json).
+- PR: **[#4](https://github.com/tracerxbrhd/chipper-hatchery/pull/4)**, open / unmerged — `feature/chipper-v0.4 → main`, без merge.
 - `npm ci`: PASS при подготовке ветки, 213 packages; dependencies/lock versions не менялись, только package version0.4.0.
 - `npm run check`: **PASS, 41 файл / 474 теста**, Node24.19.0, Vitest5.0.4; TypeScript, runtime imports/syntax, ESLint, production build/mock isolation и secret patterns PASS. Лог включает SHA: [check-final.txt](qa/0.4/check-final.txt).
 - Финальный `npm run test:ui -- --workers=2`: **PASS, 79/79, 2.3 минуты**, тот же code checkpoint; [ui-final.txt](qa/0.4/ui-final.txt). Направленный visual capture suite22/22 уже прошёл; 98 действительных PNG, 320/360/390/430 × light/dark, просмотрены и исправлены Home popup/summary и TD title/44px controls.

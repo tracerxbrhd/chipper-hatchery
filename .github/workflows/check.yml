@@ -28,4 +28,3 @@ jobs:
           name: chipper-v05-qa
           path: |
             DOCS/qa/0.5/
-            test-results/

@@ -24,8 +24,13 @@ export function CompareChicks({ chicks, now, reducedMotion }: { chicks: readonly
         const memory = memories[chick.id] ?? chick.stage;
         const stage = STAGES.indexOf(memory) <= STAGES.indexOf(chick.stage) ? memory : chick.stage;
         return <article className="comparison-bird" key={`${index}:${chick.id}`} data-chick-id={chick.id}>
-          <label className="comparison-select"><span>{index === 0 ? 'Первая птица' : 'Вторая птица'}</span><select value={chick.id} onChange={event => setSelected(index === 0 ? [event.target.value, second.id] : [first.id, event.target.value])}>
-            {chicks.map(option => <option value={option.id} key={option.id} disabled={option.id === pair[index === 0 ? 1 : 0].id}>{option.name}</option>)}
+          <label className="comparison-select"><span>{index === 0 ? 'Первая птица' : 'Вторая птица'}</span><select aria-label={index === 0 ? 'Первая птица' : 'Вторая птица'} value={chick.id} onChange={event => {
+            const next = event.currentTarget.value;
+            // Choosing the bird in the other slot swaps the pair atomically.
+            // Both controls remain useful even with exactly two saved birds.
+            setSelected(index === 0 ? [next, next === second.id ? first.id : second.id] : [next === first.id ? second.id : first.id, next]);
+          }}>
+            {chicks.map(option => <option value={option.id} key={option.id}>{option.name}</option>)}
           </select></label>
           <div className="comparison-art"><ChickArt chick={{ ...chick, stage }} size={180} animate={false} reducedMotion={reducedMotion} pose={chick.sleepUntil !== null && chick.sleepUntil > now ? 'sleep' : 'idle'} /></div>
           <h3>{chick.name}</h3><span className={`rarity-tag ${chick.rarity}`}>{ru.rarities[chick.rarity]}</span>

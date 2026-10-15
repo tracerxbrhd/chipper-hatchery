@@ -34,8 +34,17 @@ for (const width of [320, 430]) for (const theme of ['light', 'dark'] as const) 
     await page.getByRole('button', { name: 'Сравнить', exact: true }).click();
     const comparison = page.getByRole('region', { name: 'Сравнение птиц', exact: true });
     await expect(comparison).toBeVisible();
-    await comparison.getByLabel('Первая птица', { exact: true }).selectOption(before.chicks.find(chick => chick.name === 'Малыш Клюв')!.id);
-    // Select controls keep two distinct IDs even when changing the first slot.
+    const babyId = before.chicks.find(chick => chick.name === 'Малыш Клюв')!.id;
+    const adultId = before.chicks.find(chick => chick.name === 'Профессор Перо')!.id;
+    const firstSlot = comparison.getByLabel('Первая птица', { exact: true });
+    const secondSlot = comparison.getByLabel('Вторая птица', { exact: true });
+    await expect(firstSlot).toHaveValue(babyId); await expect(secondSlot).toHaveValue(adultId);
+    // With exactly two birds, choosing the other one swaps both slots.
+    await firstSlot.selectOption(adultId);
+    await expect(firstSlot).toHaveValue(adultId); await expect(secondSlot).toHaveValue(babyId);
+    await secondSlot.selectOption(adultId);
+    await expect(firstSlot).toHaveValue(babyId); await expect(secondSlot).toHaveValue(adultId);
+    // Swapping never creates a duplicate bird or unlocks a future age.
     const ids = await comparison.locator('[data-chick-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-chick-id')));
     expect(new Set(ids).size).toBe(2);
     const baby = comparison.locator('.comparison-bird').filter({ has: page.getByRole('heading', { name: 'Малыш Клюв', exact: true }) });

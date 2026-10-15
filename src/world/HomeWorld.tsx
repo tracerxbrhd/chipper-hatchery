@@ -35,7 +35,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   const model = useRef(createWorldModel(visualDetailsFor(chick).fingerprint));
   const [frame, setFrame] = useState<WorldFrame>(() => worldFrame(model.current));
   const [size, setSize] = useState(220);
-  const dimensions = useRef({ width: 360, height: 300, size: 220 });
+  const dimensions = useRef({ width: 360, height: 300, size: 220, headReach: .88 });
   const session = useRef<TouchSession | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const capture = useRef<HTMLButtonElement | null>(null);
@@ -89,10 +89,11 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
       // 56 covers their rotated hull and stroke without cropping at far depth.
       const headTop = Math.min(anatomy.head.center.y - anatomy.head.height * .62,
         genes.crestShape === 'none' ? Infinity : anatomy.anchors.crestRoot.y - 56 * anatomy.head.width / 91);
+      const headReach = (282 - headTop) / 320;
       const farGround = projectWorld({ u: .5, v: .2 });
-      const heightLimit = (height * farGround.y / 100 - 6) / ((282 - headTop) / 320 * farGround.scale);
+      const heightLimit = (height * farGround.y / 100 - 6) / (headReach * farGround.scale);
       const measuredSize = Math.max(pair ? 65 : 95, Math.min(pair ? 330 : 430, width * (pair ? .58 : 1.02), heightLimit));
-      dimensions.current = { width, height, size: measuredSize };
+      dimensions.current = { width, height, size: measuredSize, headReach };
       setSize(measuredSize);
     };
     measure();
@@ -306,8 +307,8 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   function maxLift(point = model.current.position) {
     const d = dimensions.current;
     const projected = projectActor(point);
-    // Actual head/crest start below the transparent top of the shared viewBox.
-    return Math.max(0, Math.min(d.height * .42, projected.y / 100 * d.height - d.size * projected.scale * .76 - 6));
+    // Reuse measured anatomy, including the long V3 crest, without per-frame geometry work.
+    return Math.max(0, Math.min(d.height * .42, projected.y / 100 * d.height - d.size * projected.scale * d.headReach - 6));
   }
   function pickup() {
     const active = session.current;

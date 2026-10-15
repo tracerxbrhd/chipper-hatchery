@@ -377,8 +377,11 @@ p { line-height: 1.55; }
 }
 .app::after {
   content: ''; position: absolute; z-index: -1; pointer-events: none;
-  width: 280px; height: 210px; right: -100px; bottom: -90px; border-radius: 50%;
-  background: radial-gradient(ellipse, #c4a1ec70, transparent 70%);
+  /* Keep the paint box inside the viewport. An overflowing absolute decoration
+     makes overflow:hidden programmatically scrollable when a field is focused,
+     which can move the native header and the dock along with the app. */
+  inset: 0;
+  background: radial-gradient(ellipse 140px 105px at calc(100% - 40px) calc(100% - 15px), #c4a1ec70, transparent 70%);
 }
 :root[data-theme='dark'] .app::before {
   background: radial-gradient(ellipse at 0% 0%, #8151ad26, transparent 48%),

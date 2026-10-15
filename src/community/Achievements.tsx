@@ -53,6 +53,6 @@ export function Achievements({ status, busy, onClaim }: AchievementsProps) {
     <ul className="achievement-grid">
       {status.achievements.map(entry => <AchievementCard key={entry.id} entry={entry} busy={busy} onClaim={onClaim} />)}
     </ul>
-    <p className="achievements-note">Прогресс подтверждает сервер. Награда за каждое достижение выдаётся один раз.</p>
+    <p className="achievements-note">За каждое достижение — одно пёрышко. Награду можно забрать один раз.</p>
   </section>;
 }

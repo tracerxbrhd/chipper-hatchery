@@ -27,6 +27,8 @@ async function forceGlassCapability(page: Page, memory = 8, saveData = false) {
 }
 async function fits(page: Page, width: number) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  const appScroll = await page.locator('.app').evaluate(node => ({ x: node.scrollLeft, y: node.scrollTop }));
+  expect(appScroll, 'Focus and navigation must scroll the content, keeping the app/native frame stationary').toEqual({ x: 0, y: 0 });
   await expectNoNativeOverlap(page, ['.brand', '.feather-balance', '.app-header .icon-button']);
 }
 async function solidTextContrast(page: Page, text: string, surface: string) {
@@ -192,12 +194,14 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Активности', exact: true }).click();
     await page.getByRole('button', { name: 'Играть', exact: true }).click();
     await expect(page.locator('.flaps-game')).toHaveAttribute('data-phase', 'ready');
+    expect(await page.locator('.app').evaluate(node => ({ x: node.scrollLeft, y: node.scrollTop }))).toEqual({ x: 0, y: 0 });
     await expectNoNativeOverlap(page, ['.flaps-toolbar .native-hud-primary', '.flaps-controls']);
     await capture(page, info, `flaps-ready-native-${theme}-390`);
     await page.getByRole('button', { name: 'Выйти из Chippster Flaps', exact: true }).click();
     await expect(page.locator('.activities-screen')).toBeVisible();
     await page.getByRole('button', { name: 'Защитить гнездо', exact: true }).click();
     await expect(page.locator('.tower-game')).toHaveAttribute('data-tower-state', 'build');
+    expect(await page.locator('.app').evaluate(node => ({ x: node.scrollLeft, y: node.scrollTop }))).toEqual({ x: 0, y: 0 });
     await expectNoNativeOverlap(page, ['.tower-header .native-hud-primary', '.tower-hud']);
     await capture(page, info, `tower-build-native-${theme}-390`);
   });

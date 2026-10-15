@@ -27,7 +27,7 @@ async function background(page: Page) {
   return { hiddenSampleMs: 350, hiddenRafScheduled: after - before };
 }
 
-test('v0.4 measured pair and Tower browser work stays bounded and background RAF stops', async ({ page, browser }) => {
+test('v0.4 measured pair and Tower browser work stays bounded and background RAF stops', async ({ page, browser }, info) => {
   test.setTimeout(60000);
   await page.addInitScript(() => {
     const original = window.requestAnimationFrame.bind(window); let count = 0;
@@ -56,4 +56,5 @@ test('v0.4 measured pair and Tower browser work stays bounded and background RAF
   const tick = await page.locator('.tower-game').getAttribute('data-tick'); await page.waitForTimeout(300);
   await expect(page.locator('.tower-game')).toHaveAttribute('data-tick', tick!);
   await writeFile(qa04Path('browser-perf.json'), JSON.stringify({ evidence: 'Headless Chromium with synthetic Telegram Android host and real local SQLite production services; not physical-device FPS or signed live acceptance', chromium: browser.version(), viewport: { width: 390, height: 844 }, pair: { ...pair, ...pairPaused }, tower: { ...tower, ...towerPaused } }, null, 2));
+  await info.attach('v05-browser-perf', { path: qa04Path('browser-perf.json'), contentType: 'application/json' });
 });

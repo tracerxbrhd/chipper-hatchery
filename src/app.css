@@ -623,4 +623,11 @@ h2 { font-weight: 750; }
   .bottom-dock { height: 68px; }
   .dock-item, .dock-home { min-height: 54px; }
   .care-button { padding-block: 8px; }
+  /* Introduce the birds earlier on short screens. The active tab already labels
+     the collection; keep its title and preserve every 44px control. */
+  .collection-hub > .collection-sections { margin-bottom: 12px; }
+  .collection-screen > .eyebrow { display: none; }
+  .collection-screen > h1 { font-size: 22px; line-height: 1.12; margin-bottom: 8px; }
+  .collection-screen > .intro { font-size: 12px; margin-bottom: 12px; }
+  .collection-screen .collection-tools { margin-bottom: 10px; }
 }

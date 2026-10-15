@@ -2,7 +2,7 @@
 
 **Автоматическая приёмка и визуальная проверка выполнены. Кандидат для бета-тестирования; физическая Telegram-приёмка и production preflight остаются владельцу. Production не изменён.**
 
-Проверенный runtime: [c3b07c8](https://github.com/tracerxbrhd/chipper-hatchery/commit/c3b07c8c8a4ce4ded3361d86c982fa9d7c560b92). Точная база main:3764261bd7ab2531b87b47c240a3158022b02754. [Полный успешный CI38695995822](https://github.com/tracerxbrhd/chipper-hatchery/actions/runs/38695995822), job116292574585, 2026-10-15. Последующий commit сохраняет только отчёты и evidence. [Один открытый PR#5](https://github.com/tracerxbrhd/chipper-hatchery/pull/5), без merge.
+Проверенный runtime: [c3b07c8](https://github.com/tracerxbrhd/chipper-hatchery/commit/c3b07c8c8a4ce4ded3361d86c982fa9d7c560b92). Точная база main:3764261bd7ab2531b87b47c240a3158022b02754. [Полный успешный CI38695995822](https://github.com/tracerxbrhd/chipper-hatchery/actions/runs/38695995822), job116292574585, 2026-10-15. Последующие commits сохраняют только отчёты и evidence. [Один открытый PR#5](https://github.com/tracerxbrhd/chipper-hatchery/pull/5), без merge.
 
 ## Реальные результаты
 
@@ -68,7 +68,7 @@ Initial HTML+JS+CSS:134.40→152.40kB gzip (+18.00kB,13.4%). QA PNG/SVG и до�
 
 Двусторонний обмен подтверждён roadmap GDD0.3§11. Оба оригинала перемещаются атомарным pair CAS после согласия, повторной проверки дружбы/ownership/срока/reservations; rollback второй записи и lost-response retry проверены.12 достижений используют серверное состояние и постоянные bounded claim IDs; каждое+1 перо один раз, максимум12. Декоративные случайные события не начисляют валюту.
 
-Магазин честно оставлен без checkout: saved roadmap относит marketplace/decor к0.6. Это документированное продолжение, не фиктивная покупка. Рост долговременных receipts/state_json и прежний глобальный поиск incoming gifts остаются в [AUDIT_0.5.md](AUDIT_0.5.md); опасной компактизации нет. Новые exchanges читают inbox по owner PK.
+Магазин честно оставлен без checkout. Исторический GDD0.3 относит Marketplace к0.6, а декор — к «позже». Перенос косметического магазина в продолжение0.6 после аудита экономики — решение текущей реализации, не ранее утверждённое требование. Рост долговременных receipts/state_json и прежний глобальный поиск incoming gifts остаются в [AUDIT_0.5.md](AUDIT_0.5.md); опасной компактизации нет. Новые exchanges читают inbox по owner PK.
 
 ## Ручные gates владельца
 

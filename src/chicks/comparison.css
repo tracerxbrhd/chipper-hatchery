@@ -1,0 +1,48 @@
+.collection-tools { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; }
+.collection-tools .segmented { flex: 1; min-width: 0; margin: 0; }
+.collection-tools .collection-compare-toggle { flex: 0 0 auto; width: auto; min-height: 44px; margin: 0; padding: 10px 13px; font-size: 12px; }
+.collection-compare-toggle[aria-expanded='true'] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.collection-grid .collection-card > .collection-personality { color: var(--accent); font-size: 11px; font-weight: 750; margin: 5px 0 0; }
+.collection-grid .collection-card > .collection-appearance { line-height: 1.45; min-height: 29px; margin: 5px 0; text-align: center; }
+.bird-personality { margin: 15px 0; padding: 16px 18px; border-radius: 22px; background: var(--lilac-soft, var(--accent-soft)); text-align: left; }
+.bird-personality h2 { font-size: 18px; margin: 0 0 5px; color: var(--accent); }
+.bird-personality p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink); }
+.chick-comparison { margin: 0 0 22px; padding: 16px 12px; overflow: hidden; }
+.comparison-heading { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.comparison-heading .eyebrow { margin: 0 0 5px; font-size: 9px; }
+.comparison-heading h2 { font-size: 17px; margin: 0; }
+.comparison-heading > span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; color: var(--accent); background: var(--accent-soft); font-size: 23px; }
+.chick-comparison > .comparison-intro { margin: 10px 0 16px; font-size: 12px; line-height: 1.6; }
+.comparison-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.comparison-bird { min-width: 0; text-align: center; border-radius: 19px; padding: 10px 8px 12px; background: var(--soft); border: 1px solid var(--line); }
+.comparison-select { display: block; text-align: left; font-size: 10px; font-weight: 650; color: var(--muted); }
+.comparison-select > span { display: block; margin: 0 0 5px; }
+.comparison-select select { min-width: 0; width: 100%; min-height: 44px; font: inherit; font-size: 16px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 7px 5px; }
+.comparison-art { margin: 6px -8px -8px; border-radius: 50%; background: radial-gradient(ellipse, var(--lilac-soft, var(--accent-soft)) 10%, transparent 68%); }
+.comparison-bird:nth-child(2) .comparison-art { background: radial-gradient(ellipse, var(--apricot-soft, var(--accent-soft)) 10%, transparent 68%); }
+.comparison-art .chick-art { width: 100%; height: auto; max-width: 190px; display: block; margin: auto; }
+.comparison-bird h3 { font-size: 15px; line-height: 1.35; margin: 0 0 7px; overflow-wrap: anywhere; }
+.comparison-bird .rarity-tag { display: inline-block; font-size: 9px; padding: 4px 6px; }
+.chick-comparison .comparison-personality { margin: 10px 0 3px; color: var(--accent); font-weight: 750; font-size: 12px; }
+.chick-comparison .comparison-description { font-size: 11px; line-height: 1.5; min-height: 67px; margin: 0; }
+.comparison-growth { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+.comparison-growth button { min-width: 0; min-height: 47px; padding: 5px 1px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--muted); }
+.comparison-growth button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.comparison-growth button:disabled { color: var(--muted); background: var(--soft); cursor: default; }
+.comparison-growth button span { display: block; font-size: 13px; font-weight: 750; }
+.comparison-growth button small { display: block; font-size: 8px; margin-top: 2px; }
+.chick-comparison .comparison-stage { min-height: 34px; margin: 8px 0; font-size: 10px; color: var(--muted); line-height: 1.5; }
+.comparison-facts { text-align: left; margin: 0; font-size: 11px; }
+.comparison-facts > div { padding: 8px 0; border-top: 1px solid var(--line); }
+.comparison-facts dt { color: var(--muted); margin-bottom: 4px; font-size: 9px; }
+.comparison-facts dd { margin: 0; color: var(--ink); line-height: 1.5; overflow-wrap: anywhere; }
+@media (max-width: 359px) {
+  .collection-tools { gap: 6px; }
+  .collection-tools .collection-compare-toggle { font-size: 11px; padding: 9px 8px; }
+  .chick-comparison { padding: 14px 9px; }
+  .comparison-pair { gap: 6px; }
+  .comparison-bird { padding-left: 5px; padding-right: 5px; }
+  .comparison-heading h2 { font-size: 15px; }
+  .comparison-bird h3 { font-size: 13px; }
+  .comparison-growth button small { font-size: 7px; }
+}

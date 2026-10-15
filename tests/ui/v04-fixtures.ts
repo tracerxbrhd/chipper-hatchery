@@ -7,6 +7,7 @@ import { createSocialService } from '../../tgcloud/lib/social.js';
 import { createGiftService } from '../../tgcloud/lib/gifts.js';
 import { createGuestService } from '../../tgcloud/lib/guestService.js';
 import { createTowerService } from '../../tgcloud/lib/towerService.js';
+import { createExchangeService } from '../../tgcloud/lib/exchanges.js';
 import { nativeBridge } from './v03-fixtures';
 import type { ApiResult, Method } from '../../src/types';
 
@@ -28,6 +29,7 @@ export function communityFixture() {
   const gifts = createGiftService({ database: f.database, store: f.store, gameService: f.service, now: () => f.now, id: randomUUID });
   const guest = createGuestService({ database: f.database, gameService: f.service, now: () => f.now });
   const tower = createTowerService({ database: f.database, store: f.store, gameService: f.service, now: () => f.now, id: randomUUID, random: () => .1234567 });
+  const exchanges = createExchangeService({ database: f.database, store: f.store, gameService: f.service, now: () => f.now, id: randomUUID });
   const users = new Map<number, Record<string, unknown>>([
     [101, { first_name: 'Алексей', last_name: 'Тестовый', username: 'chipper_test_A', photo_url: 'https://t.me/i/userpic/320/chipper-test-A.svg' }],
     [202, { first_name: 'Белла', last_name: 'Тестовая' }],
@@ -36,15 +38,16 @@ export function communityFixture() {
   const socialMethods = new Set(['getSocial', 'updatePrivacy', 'createSocialLink', 'resolveSocialLink', 'getPublicProfile', 'visitProfile', 'sendFriendRequest', 'respondFriendRequest', 'removeFriend', 'blockUser']);
   const giftMethods = new Set(['listGifts', 'offerGift', 'respondGift', 'cancelGift']);
   const towerMethods = new Set(['startTowerRun', 'getTowerRun', 'checkpointTowerRun', 'finishTowerRun']);
+  const exchangeMethods = new Set(['listExchanges', 'offerExchange', 'respondExchange', 'cancelExchange']);
   let wall = Date.now();
   async function dispatch(method: Method, input: Record<string, unknown> = {}, owner = 101): Promise<ApiResult> {
     const current = Date.now(); f.advance(Math.max(0, current - wall)); wall = current;
     const context = { initData: { user: { id: owner, ...users.get(owner) } } };
-    const service = method === 'getGuestChick' ? guest : towerMethods.has(method) ? tower : giftMethods.has(method) ? gifts : socialMethods.has(method) ? social : f.service;
+    const service = method === 'getGuestChick' ? guest : towerMethods.has(method) ? tower : giftMethods.has(method) ? gifts : exchangeMethods.has(method) ? exchanges : socialMethods.has(method) ? social : f.service;
     return await service.call(method, input, context) as ApiResult;
   }
   return {
-    ...f, users, social, gifts, guest, tower, dispatch,
+    ...f, users, social, gifts, guest, tower, exchanges, dispatch,
     get now() { return f.now; },
     async friends(a = 101, b = 202) {
       if (!(await f.store.read(String(a)))) await f.initial(a);

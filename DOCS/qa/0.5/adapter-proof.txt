@@ -1,0 +1,1 @@
+PASS: 7 adapter scenarios: day/night native colors; stable viewport/native corridors; save-data changes; low-memory fallback; absent hints; hide/deactivate/resume; exact listener cleanup. Synthetic DOM/adapter assertions, not browser/device evidence.

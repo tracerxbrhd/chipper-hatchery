@@ -9,8 +9,8 @@ export interface FlapsTheme { sky: string; haze: string; ink: string; gate: stri
 export function flapsTheme(): FlapsTheme {
   const dark = document.documentElement.dataset.theme === 'dark';
   return dark
-    ? { sky: '#131719', haze: '#20292d', ink: '#f1f3f0', gate: '#46564f', gateEdge: '#9bb8a7', grass: '#1c2528', accent: '#e4bc8e' }
-    : { sky: '#f5f6f3', haze: '#e5ece7', ink: '#252c2a', gate: '#dbe7d5', gateEdge: '#688574', grass: '#e2e9df', accent: '#966c3e' };
+    ? { sky: '#211b38', haze: '#3c3159', ink: '#fff5e9', gate: '#526b65', gateEdge: '#b3ddc5', grass: '#302841', accent: '#ffb886' }
+    : { sky: '#fff7e9', haze: '#efe3f6', ink: '#352c46', gate: '#d8e9cd', gateEdge: '#52785f', grass: '#e6dec7', accent: '#a94527' };
 }
 
 function loadSvg(svg: string): Promise<HTMLImageElement> {

@@ -7,6 +7,7 @@ import {
 import { dailyBonusStatus } from './dailyBonus.js';
 import { refreshProfileIdentity } from './profileIdentity.js';
 import { traitCodexCatalog } from './traitCodex.js';
+import { achievementStatus } from './achievements.js';
 
 /** ctx.initData is verified by Telegram before an endpoint is invoked. */
 export function verifiedTelegramId(ctx) {
@@ -78,20 +79,21 @@ export function createGameService({ store, now = Date.now, random = serverRandom
           const serverNow = state.updatedAt;
           if (method === 'bootstrap' || method === 'getHome') refreshProfileIdentity(state, ctx, serverNow);
           let result;
-          if (!budgetApplied && ['getDailyBonus', 'listTraitCodex', 'bootstrap', 'getHome'].includes(method) && store.consumeBudget) {
+          if (!budgetApplied && ['getDailyBonus', 'listTraitCodex', 'getAchievements', 'bootstrap', 'getHome'].includes(method) && store.consumeBudget) {
             await store.consumeBudget(telegramId, method, serverNow, method === 'getHome' ? 600 : method === 'bootstrap' ? 120 : 60); budgetApplied = true;
           }
           if (method === 'getDailyBonus') result = { dailyBonus: dailyBonusStatus(state, serverNow) };
           if (method === 'listTraitCodex') result = { codex: traitCodexCatalog(state) };
+          if (method === 'getAchievements') result = { achievements: achievementStatus(state) };
           if (!isReadMethod(method)) {
-            if (Object.hasOwn(state.giftReceipts ?? {}, params.operationId)) throw new GameError('OPERATION_CONFLICT', 'Этот ключ операции уже использован для другого действия.');
+            if (Object.hasOwn(state.giftReceipts ?? {}, params.operationId) || Object.hasOwn(state.exchangeReceipts ?? {}, params.operationId)) throw new GameError('OPERATION_CONFLICT', 'Этот ключ операции уже использован для другого действия.');
             const fingerprint = requestFingerprint(method, params);
             const receipt = Object.hasOwn(state.receipts, params.operationId) ? state.receipts[params.operationId] : null;
             if (receipt) {
               if (receipt.fingerprint !== fingerprint) throw new GameError('OPERATION_CONFLICT', 'Этот ключ операции уже использован для другого действия.');
               result = receipt.result;
             } else {
-              if (!budgetApplied && method === 'claimDailyBonus' && store.consumeBudget) {
+              if (!budgetApplied && ['claimDailyBonus', 'claimAchievement'].includes(method) && store.consumeBudget) {
                 await store.consumeBudget(telegramId, method, serverNow, 60, params.operationId); budgetApplied = true;
               }
               result = applyMutation(state, method, params, { now: serverNow, random, id });

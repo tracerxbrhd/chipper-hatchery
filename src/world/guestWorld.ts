@@ -36,6 +36,7 @@ export function stepGuestWorld(model: GuestWorldModel, elapsedSeconds: number, o
     else if (model.phase === 'apart') setWorldTarget(model.actor, { u: .69, v: .57 });
     else if (model.phase === 'greet') greetWorldChick(model.actor);
     else if (model.phase === 'look') { model.actor.mode = 'look'; model.actor.direction = 'left'; }
+    else if (model.phase === 'together' && model.cycle % 2 === 0) model.actor.mode = model.actor.personality;
     else model.actor.direction = 'left';
   }
   model.actor.decisionAt = Infinity;

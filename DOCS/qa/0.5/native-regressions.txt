@@ -1,0 +1,13 @@
+PASS concurrent hatch and purchase preserve one bird and one debit
+PASS daily claim CAS and seven-day receipt replay credit once
+PASS server sleep survives requests and care stays blocked until wake
+PASS Flaps duplicate finishes credit once and preserve cooldown
+PASS gift transfer preserves historical genes, age, owner uniqueness and balance
+PASS gift accept/cancel race leaves exactly one owner across eight schedules
+PASS Nest Defense start replay, owner check, claimed-wave rejection and retirement
+PASS care cooldown and absence keep economy bounded without penalty
+PASS Codex legacy backfill preserves birds, receipts, balance and stabilizes revision
+PASS social consent, private profiles, friend guest whitelist and blocking
+PASS gene generator remains original V2 and covers actual attainable variants
+PASS verified Telegram identity rejects unsafe/foreign hints and unsafe avatar URLs
+Native Node + real SQLite smoke: 12 groups PASS. Separate diagnostic; not npm check/test:ui.

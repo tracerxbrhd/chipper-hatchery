@@ -1,0 +1,14 @@
+# Chipper 0.5 — deployment runbook
+
+Target: @chipperhatcherybot, App ID8924974998. **Owner currently authorizes read-only diagnostics only. No production write has been performed.** Feature PR must remain open/unmerged until reviewed.
+
+1. Pin reviewed feature SHA; verify latest main and source/tree hashes. Install Node24 dependencies with `npm ci`; require `npm run check` and `npm run test:ui`. Inspect0.5 screenshots and manual checks in ACCEPTANCE_RESULT_0.5.md. CI Chromium is not physical WebView evidence.
+2. In an already owner-authorized CLI environment, select the exact bot. Do not print/read/copy CLI token into console, Git, PR or reports. Verify getMe identity through documented CLI read-only facilities. If identity differs, stop.
+3. `npx tgcloud fetch`, `npx tgcloud status`, `npx tgcloud diff`; inspect differences against reviewed SHA. Fetch must not overwrite worktree. Never use automatic pull. If cloud revision/source differs unexpectedly, stop release and document actual revision; do not overwrite it.
+4. Run documented0.4 read-only SELECT preflight, preserving release fence `chipper-v0.2-clean-start`, two-row MATERIALIZED SQL support and TD settlement invariants. **Do not invoke gameplay endpoints as read-only probes:** getHome/listGifts may reconcile/expire/persist. No new DDL is required in0.5; a dry-run must therefore show no schema change. Unexpected DDL means stop.
+5. Review actual immutable source/build diff and backup/recovery posture. Ask owner for separate explicit deployment authorization only after evidence is concrete. Until that authorization, do not push cloud, apply migrate, reset, force, repair webhook, delete data or call mutating endpoints.
+6. After separate authorization in a future session, publish only the reviewed build/source with normal documented CLI command. Confirm physical Telegram owner flows before wider beta. This document does not authorize that step.
+
+After any exchange or achievement claim,0.4 backend is unsafe as naive rollback: it does not enforce exchange reservations/namespaces/claim fences. Prefer tested fix-forward. Preserve all exchange history/receipts and achievement claimed IDs; never downgrade unknown entitlement versions, compact old receipts without proof or reset users.
+
+Manual owner matrix: Android/iOS native chrome/safe areas, touch drag/pet/hold, real blur and fallback, background/resume, keyboard, two-account friendship/privacy/gift/exchange with network retry, both games and daily/achievement claim. No unattended production action is part of this task.

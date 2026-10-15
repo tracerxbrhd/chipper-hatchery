@@ -1,12 +1,13 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { webApp } from '../api/telegram';
-import { ChickArt } from '../components/ChickArt';
+import { ChickArt, type ChickArtHandle } from '../components/ChickArt';
+import { visualDetailsFor } from '../chicks/models';
 import type { Chick, GuestChickDTO } from '../types';
 import { cancelWorldTouch, createWorldModel, dragWorldChick, greetWorldChick, lookWorldChick, pickupWorldChick, releaseWorldChick, setWorldTarget, startWorldCare, startWorldGrowth, stepWorld, strokeWorldChick, worldFrame, type WorldFrame } from './worldEngine';
 import { projectWorld, WORLD_FOOD, WORLD_HOME, worldPointFromPointer, worldSeed } from './worldMath';
 import { beginTouch, finishTouch, holdTouch, HOLD_MS, moveTouch, type TouchGesture, type TouchSession } from './touchGestures';
 import { boundWorldPoint, clamp } from './worldMath';
-import { GuestChick } from './GuestChick';
+import { GuestChick, type GuestChickHandle } from './GuestChick';
 import { createGuestWorld, pairOwnerPointFromPointer, projectPair, stepGuestWorld } from './guestWorld';
 import './world.css';
 
@@ -28,7 +29,9 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   const surface = useRef<HTMLDivElement>(null);
   const actor = useRef<HTMLButtonElement>(null);
   const shadow = useRef<HTMLDivElement>(null);
-  const model = useRef(createWorldModel(worldSeed(chick.id)));
+  const art = useRef<ChickArtHandle>(null);
+  const guestActor = useRef<GuestChickHandle>(null);
+  const model = useRef(createWorldModel(visualDetailsFor(chick).fingerprint));
   const [frame, setFrame] = useState<WorldFrame>(() => worldFrame(model.current));
   const [size, setSize] = useState(220);
   const dimensions = useRef({ width: 360, height: 300, size: 220 });
@@ -47,14 +50,16 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   const frameRef = useRef(frame);
   const guestChick = readOnly ? null : guest?.chick;
   const pair = Boolean(guestChick);
-  const guestModel = useRef(createGuestWorld(worldSeed(guestChick?.id ?? 'guest')));
+  const guestModel = useRef(createGuestWorld(guestChick ? visualDetailsFor(guestChick).fingerprint : worldSeed('guest')));
+  const pairGreetingAt = useRef(-1);
   const [guestFrame, setGuestFrame] = useState<WorldFrame>(() => worldFrame(guestModel.current.actor));
+  const guestFrameRef = useRef(guestFrame);
   const pairRef = useRef(pair);
   pairRef.current = pair;
   const projectActor = (point: typeof WORLD_HOME) => pairRef.current ? projectPair(point, 'owner') : projectWorld(point);
   const food = projectActor(WORLD_FOOD);
 
-  // Movement and contact transforms update directly; React only updates joint poses at 30 Hz.
+  // Movement and joints update directly. React only renders a new semantic state.
   function draw(next: WorldFrame) {
     const projected = projectActor(next.position);
     if (actor.current) {
@@ -77,7 +82,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     const measure = () => {
       const { width, height } = node.getBoundingClientRect();
       // The silhouette stays legible on short viewports while keeping its head inside the scene.
-      const measuredSize = Math.max(pair ? 65 : 95, Math.min(pair ? 250 : 300, width * (pair ? .48 : .78), height * .92));
+      const measuredSize = Math.max(pair ? 65 : 95, Math.min(pair ? 330 : 430, width * (pair ? .58 : 1.02), height * 1.08));
       dimensions.current = { width, height, size: measuredSize };
       setSize(measuredSize);
     };
@@ -88,7 +93,8 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   }, [pair]);
 
   useEffect(() => {
-    guestModel.current = createGuestWorld(worldSeed(guestChick?.id ?? 'guest'));
+    guestModel.current = createGuestWorld(guestChick ? visualDetailsFor(guestChick).fingerprint : worldSeed('guest'));
+    pairGreetingAt.current = -1;
     setGuestFrame(worldFrame(guestModel.current.actor));
     draw(frameRef.current);
   }, [guestChick?.id, pair]);
@@ -96,7 +102,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   useEffect(() => {
     cancelGesture();
     previousStage.current = chick.stage;
-    model.current = createWorldModel(worldSeed(chick.id));
+    model.current = createWorldModel(visualDetailsFor(chick).fingerprint);
     const initial = stepWorld(model.current, 0, sleepingRef.current);
     frameRef.current = initial;
     setFrame(initial);
@@ -196,6 +202,10 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
       const guestNext = pairRef.current && animate ? stepGuestWorld(guestModel.current, delta, next,
         dimensions.current.size * .9 / 320 * (16 / .6) / Math.max(1, dimensions.current.width * .78 * .25)) : null;
       if (guestNext && !session.current && model.current.mode === 'idle' && ['greet', 'look', 'together'].includes(guestModel.current.phase)) lookWorldChick(model.current, 1, 0);
+      if (guestNext && guestModel.current.phase === 'greet' && pairGreetingAt.current !== guestModel.current.phaseAt) {
+        pairGreetingAt.current = guestModel.current.phaseAt;
+        if (!session.current && model.current.mode === 'idle' && !sleepingRef.current) greetWorldChick(model.current);
+      }
       if (!session.current && ['tap', 'stroke', 'land'].includes(gesture) && !['tap', 'stroke', 'land'].includes(next.mode)) setGesture('idle');
       if (!animate && !['held', 'land', 'tap', 'stroke'].includes(next.mode)) {
         setTransient(false);
@@ -206,9 +216,16 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
       draw(next);
       if (timestamp - lastPoseAt >= 1000 / 30 || next.pose !== frameRef.current.pose) {
         lastPoseAt = timestamp;
+        const changed = next.pose !== frameRef.current.pose || next.direction !== frameRef.current.direction || next.mode !== frameRef.current.mode || next.reaction !== frameRef.current.reaction;
+        art.current?.update({ phase: animate ? next.phase : next.pose === 'tap' || next.pose === 'land' ? .5 : 0, motion: animate ? next.motion : 0, gaze: next.gaze });
         frameRef.current = next;
-        setFrame(next);
-        if (guestNext) setGuestFrame(guestNext);
+        if (changed) setFrame(next);
+        if (guestNext) {
+          guestActor.current?.update(guestNext, guestModel.current.phase);
+          const old = guestFrameRef.current;
+          if (guestNext.pose !== old.pose || guestNext.direction !== old.direction || guestNext.reaction !== old.reaction) setGuestFrame(guestNext);
+          guestFrameRef.current = guestNext;
+        }
       }
       request = requestAnimationFrame(tick);
     };
@@ -229,7 +246,10 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     const timestamp = performance.now();
     if (timestamp - lastPointerPoseAt.current >= 1000 / 30) {
       lastPointerPoseAt.current = timestamp;
-      frameRef.current = next; setFrame(next);
+      const previous = frameRef.current;
+      if (next.pose !== previous.pose || next.direction !== previous.direction || next.mode !== previous.mode || next.reaction !== previous.reaction) setFrame(next);
+      art.current?.update({ phase: animate ? next.phase : .5, motion: animate ? next.motion : 0, gaze: next.gaze });
+      frameRef.current = next;
     }
   };
   const approach = (event: PointerEvent<HTMLDivElement>) => {
@@ -360,23 +380,35 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   const presentationPose = sleeping ? 'sleep' : animate || tactilePose ? frame.pose
     : action === 'feed' || action === 'play' || action === 'grow' ? action : 'look';
   return <div className={`living-world ${!animate ? 'living-world--still' : ''} ${pair ? 'living-world--pair' : ''}`} ref={surface} onPointerDown={approach} onPointerMove={gaze} onPointerLeave={() => lookWorldChick(model.current, 0, 0)} onKeyDown={keyApproach} role="group" tabIndex={readOnly ? -1 : 0} aria-label={`Поляна: ${chick.name}`} aria-describedby={instructionsId} data-mode={frame.mode} data-gesture={gesture} data-read-only={String(readOnly)} data-running={animate && visible ? 'true' : 'false'} data-guest-count={pair ? 1 : 0}>
+    <div className="world-sky" aria-hidden="true" />
+    <div className="world-celestial" aria-hidden="true"><i /><i /><i /></div>
+    <svg className="world-landscape" viewBox="0 0 600 400" preserveAspectRatio="none" aria-hidden="true">
+      <path className="world-hill-far" d="M0 235Q95 154 216 214Q313 150 420 196Q517 132 600 205V400H0Z" />
+      <path className="world-hill-near" d="M0 274Q79 212 182 261Q292 202 409 253Q502 220 600 271V400H0Z" />
+      <g className="world-distant-grass"><path d="M28 258q-15-34-6-57m6 57q-1-38 15-47m-9 46q13-30 25-27M533 252q-11-33-3-53m5 52q2-34 18-42m-7 44q10-22 26-24" /></g>
+    </svg>
     <div className="world-light" aria-hidden="true" />
+    <span className="world-mote world-mote--one" aria-hidden="true" /><span className="world-mote world-mote--two" aria-hidden="true" /><span className="world-mote world-mote--three" aria-hidden="true" />
     <svg className="world-ground" viewBox="0 0 600 230" preserveAspectRatio="none" aria-hidden="true">
-      <ellipse className="world-ground-base" cx="300" cy="115" rx="283" ry="93" />
+      <ellipse className="world-ground-rim" cx="300" cy="121" rx="283" ry="93" />
+      <ellipse className="world-ground-base" cx="300" cy="110" rx="283" ry="93" />
+      <ellipse className="world-ground-pool" cx="317" cy="104" rx="190" ry="54" />
       <path className="world-ground-contour" d="M52 118c28 63 153 83 248 83s216-19 248-82" />
       <path className="world-ground-trail" d="M127 124c50-29 134-38 215-26s104 34 116 40" />
     </svg>
     <svg className="world-sprig world-sprig--back" viewBox="0 0 44 42" aria-hidden="true"><path d="M22 38V14m0 14C9 26 9 15 7 12m15 12C33 21 32 12 36 9m-14 9C17 9 20 6 22 3" /></svg>
     <span className="world-pebble world-pebble--back" aria-hidden="true" />
+    <svg className="world-flowers" viewBox="0 0 60 60" aria-hidden="true"><path d="M17 55l1-29m21 29L36 13M9 44q10-1 9-9m21 10q8-9 13-6" /><g><circle cx="18" cy="23" r="6" /><circle cx="36" cy="12" r="7" /></g><circle cx="18" cy="23" r="2" /><circle cx="36" cy="12" r="2.5" /></svg>
     <div className={`world-food ${frame.mode === 'feed' ? 'world-food--served' : ''}`} style={{ left: `${food.x}%`, top: `${food.y}%`, marginLeft: `${(frame.direction === 'left' ? -1 : 1) * size * (76 / 320) * projected.scale}px`, marginTop: `${-3 / 320 * size * projected.scale}px` }} aria-hidden="true"><i /><i /><i /><i /><i /></div>
     {frame.mode === 'play' && <span className="world-heart" style={{ left: `${projected.x + 8}%`, top: `calc(${projected.y}% - ${size * .57 * projected.scale}px)` }} aria-hidden="true">♡</span>}
     <div className="world-shadow" ref={shadow} style={{ left: `${projected.x}%`, top: `${projected.y}%`, width: size * .37, height: Math.max(5, size * .035), opacity: projected.shadowOpacity * (1 - Math.min(.5, frame.lift / 120)), transform: `translate(-50%, -50%) scale(${projected.scale * (1 - Math.min(.25, frame.lift / 200))})` }} aria-hidden="true" />
     <button className="world-chick-action" ref={actor} type="button" disabled={sleeping || readOnly} data-growing={animate && visible && frame.mode === 'grow' ? 'true' : undefined} aria-label={`Погладить: ${chick.name}`} onPointerDown={touchDown} onPointerMove={touchMove} onPointerUp={touchUp} onPointerCancel={cancelGesture} onLostPointerCapture={() => { if (session.current) cancelGesture(); }} onClick={event => greet(event.detail)} style={{ left: `${projected.x}%`, top: `${projected.y}%`, width: size, height: size, transform: `translate(-50%, -88.125%) translateY(${-frame.lift}px) scale(${projected.scale}) rotate(${animate && frame.mode === 'held' ? -frame.motion * 4 : 0}deg)` }}>
-      <div className="world-chick-visual"><ChickArt chick={chick} pose={presentationPose} direction={frame.direction} phase={animate ? frame.phase : frame.pose === 'tap' || frame.pose === 'land' ? .5 : 0} reaction={frame.reaction} motion={animate ? frame.motion : 0} gaze={frame.gaze} animate={animate && visible} shadow={false} size={size} /></div>
+      <div className="world-chick-visual"><ChickArt ref={art} chick={chick} pose={presentationPose} direction={frame.direction} phase={animate ? frame.phase : frame.pose === 'tap' || frame.pose === 'land' ? .5 : 0} reaction={frame.reaction} motion={animate ? frame.motion : 0} gaze={frame.gaze} animate={animate && visible} shadow={false} size={size} /></div>
     </button>
-    {guestChick && guest && <GuestChick key={guestChick.id} chick={guestChick} displayName={guest.displayName} frame={guestFrame} size={size} animate={animate && visible} phase={guestModel.current.phase} />}
+    {guestChick && guest && <GuestChick ref={guestActor} key={guestChick.id} chick={guestChick} displayName={guest.displayName} frame={guestFrame} size={size} animate={animate && visible} phase={guestModel.current.phase} />}
     <svg className="world-sprig world-sprig--front" viewBox="0 0 44 42" aria-hidden="true"><path d="M22 38V16m0 16C12 23 9 24 5 18m17 11c7-13 13-10 17-18m-17 11C19 10 22 9 25 5" /></svg>
     <span className="world-pebble world-pebble--front" aria-hidden="true" />
+    {animate && ['sneeze', 'startle', 'stretch', 'shake', 'stumble'].includes(frame.mode) && <span className="world-whimsy" aria-hidden="true">{({ sneeze: 'Апчхи! Пыльца щекочет', startle: 'Ой. Это была собственная тень', stretch: 'Зарядка для одного пера', shake: 'Пушистость восстановлена', stumble: 'Так и было задумано' } as Record<string, string>)[frame.mode]}</span>}
     <span className="world-instructions" id={instructionsId}>{readOnly ? 'В гостях — любуемся без забот и перемещений' : sleeping ? 'На поляне тихо и спокойно' : gesture === 'held' || gesture === 'drag' ? 'Отпустите — и птенец мягко приземлится' : gesture === 'stroke' ? 'Вот так, нежно' : frame.mode === 'feed' ? 'Зёрнышки уже на поляне' : frame.mode === 'play' ? 'Как хорошо быть рядом' : 'Погладьте птенца · задержите палец, чтобы поднять'}</span>
   </div>;
 }

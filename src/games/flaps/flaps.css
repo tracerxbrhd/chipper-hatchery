@@ -73,3 +73,22 @@
 @media (max-height: 650px) { .flaps-toolbar h1 { font-size: 16px; }.flaps-game { gap: 4px; }.flaps-footer { font-size: 10px; }.flaps-invite-art { height: 190px; }.flaps-invite-art > svg { width: 190px; height: 190px; }.flaps-result-art { width: 170px; }.flaps-result-stats { margin: 0 0 14px; } }
 @media (prefers-reduced-motion: reduce) { .flaps-record .flaps-result-stats { animation: none; } }
 [data-motion='off'] .flaps-record .flaps-result-stats { animation: none; }
+
+/* 0.5 uses the same paper/ink system around a separately painted Canvas scene. */
+.flaps-invite { background: var(--paper); border-color: var(--line); box-shadow: var(--card-shadow); }
+.flaps-invite-art { background: linear-gradient(145deg, var(--lilac-soft), var(--apricot-soft)); }
+[data-theme='dark'] .flaps-invite-art { background: linear-gradient(145deg, #49406f, #775265); }
+.flaps-invite-art::after { content: ''; position: absolute; right: 16%; top: 23%; width: 65px; height: 65px; pointer-events: none; background: var(--apricot); opacity: .17; border-radius: 50%; }
+.flaps-invite-gate { background: var(--mint-soft); border-color: var(--mint); box-shadow: inset 0 2px 0 #ffffff40; }
+.flaps-invite-gate::after { background: var(--mint); opacity: .4; }
+.flaps-invite-air { background: var(--accent); opacity: .55; }
+.flaps-tag { color: var(--accent); font-weight: 750; font-size: 10px; }
+.flaps-invite h2 { font-weight: 850; letter-spacing: -1px; }
+.flaps-invite-best { padding: 11px 12px; border: 1px solid var(--line); border-radius: 15px; background: var(--lilac-soft); }
+.flaps-round-button { background: var(--paper); border-color: var(--line); box-shadow: var(--card-shadow); }
+.flaps-round-button:disabled { opacity: 1; color: var(--muted); background: var(--soft); box-shadow: none; }
+.flaps-surface { border-color: var(--line); box-shadow: var(--card-shadow); }
+.flaps-overlay, [data-theme='dark'] .flaps-overlay { background: #25183d66; }
+.flaps-overlay-card { border-color: var(--glass-outline); background: var(--paper); box-shadow: var(--shadow); }
+.flaps-ready { color: var(--ink); }
+.flaps-ready small { opacity: 1; color: var(--muted); }

@@ -83,6 +83,8 @@ export function setupTelegram() {
   const app = webApp();
   const root = document.documentElement;
   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+  const hardware = navigator as Navigator & { deviceMemory?: number; connection?: EventTarget & { saveData?: boolean } };
+  const connection = hardware.connection;
   const priorSwipes = app?.isVerticalSwipesEnabled;
   let stableHeight = stableViewportHeight(app?.viewportStableHeight, window.innerHeight);
   let blurTimer = 0;
@@ -116,10 +118,15 @@ export function setupTelegram() {
   function updateAppearance() {
     const theme = app?.initData ? app.colorScheme : systemTheme.matches ? 'dark' : 'light';
     root.dataset.theme = theme;
+    // Capability hints only: never persisted or sent to the game server.
+    // Missing hints retain supported static glass; small devices/save-data use
+    // the same opaque fallback as reduced-transparency CSS.
+    const lowMemory = typeof hardware.deviceMemory === 'number' && hardware.deviceMemory > 0 && hardware.deviceMemory <= 2;
+    root.dataset.glass = connection?.saveData === true || lowMemory ? 'off' : 'on';
     const insets = safeInsets(app?.safeAreaInset, app?.contentSafeAreaInset);
     sides.forEach(side => root.style.setProperty(`--tg-safe-${side}`, `${insets[side]}px`));
     updateChrome();
-    const color = theme === 'dark' ? '#131719' : '#f5f6f3';
+    const color = theme === 'dark' ? '#17152b' : '#fff7e9';
     try { app?.setHeaderColor?.(color); } catch { /* Optional platform styling. */ }
     try { app?.setBackgroundColor?.(color); } catch { /* Optional platform styling. */ }
     try { if (app && supports(app, '7.10')) app.setBottomBarColor?.(color); } catch { /* Older clients have their own bottom bar. */ }
@@ -142,6 +149,7 @@ export function setupTelegram() {
   app?.onEvent('activated', activated);
   app?.onEvent('deactivated', deactivated);
   systemTheme.addEventListener?.('change', updateAppearance);
+  connection?.addEventListener?.('change', updateAppearance);
   window.addEventListener('resize', updateHeight);
   window.visualViewport?.addEventListener('resize', updateHeight);
   document.addEventListener('focusin', focusChanged);
@@ -152,6 +160,7 @@ export function setupTelegram() {
     app?.offEvent('activated', activated);
     app?.offEvent('deactivated', deactivated);
     systemTheme.removeEventListener?.('change', updateAppearance);
+    connection?.removeEventListener?.('change', updateAppearance);
     window.removeEventListener('resize', updateHeight);
     window.visualViewport?.removeEventListener('resize', updateHeight);
     document.removeEventListener('focusin', focusChanged);

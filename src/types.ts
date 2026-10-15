@@ -22,6 +22,7 @@ export interface Chick {
   lastFeedAt: number | null; lastPlayAt: number | null; sleepUntil: number | null;
   careMilestones: number[];
   reservedGiftId?: string;
+  reservedExchangeId?: string;
 }
 export interface GameRecord { configVersion: string; scoreType: string; bestScore: number; completedRuns: number; lastPlayedAt: number | null; lastRewardAt: number | null; scoreTrust: 'casual' | 'verified' }
 export type Visibility = 'private' | 'friends' | 'public';
@@ -37,6 +38,9 @@ export interface SocialSummary { profile: SocialProfile; friends: Peer[]; incomi
 export interface PublicProfile extends Peer { relationship: 'self' | 'friend' | 'incoming' | 'outgoing' | 'none' | 'blocked'; accessible: boolean; activeChick: PublicChick | null; chicks: PublicChick[] | null; collectionVisible: boolean; invited?: boolean }
 export interface SocialLink { token: string; url: string; kind: 'invite' | 'profile' | 'chick'; chickId?: string }
 export interface Gift { giftId: string; sender: Peer; recipient: Peer; chick: PublicChick; status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'; createdAt: number; expiresAt: number; completedAt: number | null }
+export interface Exchange { exchangeId: string; sender: Peer; recipient: Peer; offeredChick: PublicChick; requestedChick: PublicChick; status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'; createdAt: number; expiresAt: number; completedAt: number | null }
+export interface AchievementEntry { id: string; title: string; description: string; category: string; target: number; progress: number; unlocked: boolean; claimed: boolean; rewardAmount: number }
+export interface AchievementStatus { version: 1; achievements: AchievementEntry[]; found: number; total: number; claimed: number }
 export interface Egg { id: string; kind: 'starter' | 'ordinary'; createdAt: number; readyAt: number }
 export interface Snapshot {
   revision: number; serverNow: number; balanceVersion: string;
@@ -45,8 +49,8 @@ export interface Snapshot {
     flaps: { bestScore: number; completedRuns: number; lastPlayedAt: number | null }; games?: Record<string, GameRecord>;
     dailyBonus?: { lastClaimDayUTC: number | null; lastClaimAt: number | null; claimsTotal: number };
     discoveredTraits?: { version: 1; ids: string[] }; telegramIdentity?: TelegramIdentity | null };
-  chicks: Chick[]; egg: Egg | null; dailyBonus?: DailyBonusStatus; codex?: TraitCodexStatus;
+  chicks: Chick[]; egg: Egg | null; dailyBonus?: DailyBonusStatus; codex?: TraitCodexStatus; achievements?: AchievementStatus;
 }
 export interface ApiError { code: string; message: string; retryable: boolean; retryAt?: number }
 export type ApiResult = { ok: true; state: Snapshot; result?: Record<string, unknown> } | { ok: false; error: ApiError };
-export type Method = 'bootstrap' | 'getHome' | 'listChicks' | 'getIncubator' | 'hatchEgg' | 'completeOnboarding' | 'careAction' | 'activateChick' | 'renameChick' | 'buyEgg' | 'startFlapsRun' | 'finishFlapsRun' | 'logEvent' | 'getSocial' | 'updatePrivacy' | 'createSocialLink' | 'resolveSocialLink' | 'getPublicProfile' | 'visitProfile' | 'sendFriendRequest' | 'respondFriendRequest' | 'removeFriend' | 'blockUser' | 'listGifts' | 'offerGift' | 'respondGift' | 'cancelGift' | 'getDailyBonus' | 'claimDailyBonus' | 'listTraitCodex' | 'getGuestChick' | 'startTowerRun' | 'getTowerRun' | 'checkpointTowerRun' | 'finishTowerRun';
+export type Method = 'bootstrap' | 'getHome' | 'listChicks' | 'getIncubator' | 'hatchEgg' | 'completeOnboarding' | 'careAction' | 'activateChick' | 'renameChick' | 'buyEgg' | 'startFlapsRun' | 'finishFlapsRun' | 'logEvent' | 'getSocial' | 'updatePrivacy' | 'createSocialLink' | 'resolveSocialLink' | 'getPublicProfile' | 'visitProfile' | 'sendFriendRequest' | 'respondFriendRequest' | 'removeFriend' | 'blockUser' | 'listGifts' | 'offerGift' | 'respondGift' | 'cancelGift' | 'getDailyBonus' | 'claimDailyBonus' | 'listTraitCodex' | 'getGuestChick' | 'startTowerRun' | 'getTowerRun' | 'checkpointTowerRun' | 'finishTowerRun' | 'getAchievements' | 'claimAchievement' | 'listExchanges' | 'offerExchange' | 'respondExchange' | 'cancelExchange';

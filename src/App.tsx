@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { TowerCheckpointInput, TowerFinishInput, TowerGameResult, TowerRunDTO } from './games/tower/types';
 import { FriendOnWorldPicker } from './community/FriendOnWorldPicker';
 import { call, getAuthKey, isDevMock, playFeedback } from './api/client';
-import type { ApiError, ApiResult, CareAction, Chick, Gift, GuestChickDTO, Method, PublicChick, PublicProfile, Snapshot, SocialLink, SocialSummary } from './types';
+import type { ApiError, ApiResult, CareAction, Chick, Exchange, Gift, GuestChickDTO, Method, PublicChick, PublicProfile, Snapshot, SocialLink, SocialSummary } from './types';
 import { ru } from './i18n';
 import { HatchResult, Onboarding } from './screens/EggScreens';
 import { Activities, GameResultScreen, FlapsGame, type GameAttempt, type GameResult } from './screens/GameScreens';
@@ -24,7 +24,7 @@ const TowerDefense = lazy(() => import('./games/tower/TowerDefense').then(module
 type Screen = Tab | 'incubator' | 'settings' | 'chick' | 'hatchResult' | 'game' | 'gameResult' | 'social' | 'visit' | 'tower';
 type Success = Extract<ApiResult, { ok: true }>;
 interface Operation { method: Method; params: Record<string, unknown>; errorEventId: string; onSuccess?: (response: Success) => void }
-const mutations = new Set<Method>(['hatchEgg', 'completeOnboarding', 'careAction', 'activateChick', 'renameChick', 'buyEgg', 'startFlapsRun', 'finishFlapsRun', 'logEvent', 'updatePrivacy', 'createSocialLink', 'sendFriendRequest', 'respondFriendRequest', 'removeFriend', 'blockUser', 'offerGift', 'respondGift', 'cancelGift', 'claimDailyBonus', 'startTowerRun', 'checkpointTowerRun', 'finishTowerRun']);
+const mutations = new Set<Method>(['hatchEgg', 'completeOnboarding', 'careAction', 'activateChick', 'renameChick', 'buyEgg', 'startFlapsRun', 'finishFlapsRun', 'logEvent', 'updatePrivacy', 'createSocialLink', 'sendFriendRequest', 'respondFriendRequest', 'removeFriend', 'blockUser', 'offerGift', 'respondGift', 'cancelGift', 'claimDailyBonus', 'startTowerRun', 'checkpointTowerRun', 'finishTowerRun', 'claimAchievement', 'offerExchange', 'respondExchange', 'cancelExchange']);
 const legacyIncubator = () => location.hash === '#incubator' || ['incubator'].includes(new URLSearchParams(location.search).get('tab') ?? '');
 
 function readPreferences(): Preferences {
@@ -52,6 +52,7 @@ export default function App() {
   const guestRestored = useRef(false);
   const refreshGuestRef = useRef<() => void>(() => {});
   const [gifts, setGifts] = useState<Gift[]>([]);
+  const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
   const [link, setLink] = useState<SocialLink | null>(null);
   const [shareChick, setShareChick] = useState<PublicChick | undefined>();
@@ -141,6 +142,7 @@ export default function App() {
         if (response.result?.social) setSocial(response.result.social as SocialSummary);
         if (response.result?.profile) setPublicProfile(response.result.profile as PublicProfile);
         if (response.result?.gifts) setGifts(response.result.gifts as Gift[]);
+        if (response.result?.exchanges) setExchanges(response.result.exchanges as Exchange[]);
         if (response.result && 'link' in response.result) setLink(response.result.link as SocialLink | null);
         operationRef.current = null;
         // Release the lock before a successful operation starts its next step.
@@ -375,7 +377,7 @@ export default function App() {
 
   const openSocial = (chickId: string | null = null) => {
     setGiftChickId(chickId); setShareChick(undefined); setLink(null); go('social');
-    perform('getSocial', {}, () => perform('listGifts'));
+    perform('getSocial', {}, () => perform('listGifts', {}, () => perform('listExchanges')));
   };
   const openProfile = (profileId: string) => {
     setPublicProfile(null); go('visit'); perform('visitProfile', { profileId });
@@ -383,7 +385,7 @@ export default function App() {
   const socialAction = (method: Method, params: Record<string, unknown> = {}) => {
     if (method === 'createSocialLink' && params.kind !== 'chick') setShareChick(undefined);
     perform(method, params, response => {
-      if (method === 'getSocial' || ['offerGift', 'respondGift', 'cancelGift', 'removeFriend', 'blockUser', 'respondFriendRequest'].includes(method)) perform('listGifts');
+      if (method === 'getSocial' || ['offerGift', 'respondGift', 'cancelGift', 'offerExchange', 'respondExchange', 'cancelExchange', 'removeFriend', 'blockUser', 'respondFriendRequest'].includes(method)) perform('listGifts', {}, () => perform('listExchanges'));
       if (method === 'sendFriendRequest') {
         const summary = response.result?.social as SocialSummary | undefined;
         setPublicProfile(previous => {
@@ -397,6 +399,7 @@ export default function App() {
       if (method === 'removeFriend' || method === 'blockUser') { if (params.profileId === guestSelectionRef.current) clearGuest(); }
       if (method === 'updatePrivacy') { setLink(null); notify('Видимость сохранена'); }
       if (response.result?.gift) notify(method === 'offerGift' ? 'Подарок предложен' : 'Ответ на подарок сохранён');
+      if (response.result?.exchange) notify(method === 'offerExchange' ? 'Обмен предложен — ждём согласия друга' : 'Ответ на обмен сохранён');
     });
   };
   const shareBird = (chick: Chick) => {
@@ -445,8 +448,8 @@ export default function App() {
         {screen === 'chick' && selected && <ChickCard key={selected.id} chick={selected} state={state} {...view} onActivate={() => activate(selected.id)} onRename={name => perform('renameChick', { chickId: selected.id, name }, () => { feedback('success'); notify(ru.renamed); })} onShare={() => shareBird(selected)} onGift={() => openSocial(selected.id)} />}
         {screen === 'activities' && <Activities state={state} {...view} onStart={startGame} onTowerStart={startTower} />}
         {screen === 'settings' && <Settings preferences={preferences} onChange={updatePreference} onRefresh={() => perform('getHome', {}, () => notify(ru.refreshed))} busy={view.busy} />}
-        {screen === 'profile' && <Profile state={state} now={now} social={social} busy={view.busy} onCodex={() => { setCollectionSection('codex'); go('collection'); }} onDailyClaim={() => perform('claimDailyBonus', {}, () => { feedback('success'); notify('+1 пёрышко — ежедневный подарок'); })} onDailyRefresh={() => perform('getDailyBonus')} onSettings={() => go('settings')} onSocial={() => openSocial()} />}
-        {screen === 'social' && <SocialScreen key={giftChickId ?? 'social'} social={social} gifts={gifts} state={state} busy={view.busy} now={now} onAction={socialAction} onOpen={openProfile} giftChickId={giftChickId} link={link} shareChick={shareChick} onCloseLink={() => setLink(null)} />}
+        {screen === 'profile' && <Profile state={state} now={now} social={social} busy={view.busy} onCodex={() => { setCollectionSection('codex'); go('collection'); }} onClaimAchievement={achievementId => perform('claimAchievement', { achievementId }, () => { feedback('success'); notify('+1 пёрышко — достижение в вашей истории'); })} onDailyClaim={() => perform('claimDailyBonus', {}, () => { feedback('success'); notify('+1 пёрышко — ежедневный подарок'); })} onDailyRefresh={() => perform('getDailyBonus')} onSettings={() => go('settings')} onSocial={() => openSocial()} />}
+        {screen === 'social' && <SocialScreen key={giftChickId ?? 'social'} social={social} gifts={gifts} exchanges={exchanges} state={state} busy={view.busy} now={now} onAction={socialAction} onOpen={openProfile} giftChickId={giftChickId} link={link} shareChick={shareChick} onCloseLink={() => setLink(null)} />}
         {screen === 'visit' && <VisitorScreen profile={publicProfile} {...view} inviteToken={intent?.kind === 'invite' ? intent.token : undefined} onAction={socialAction} onBack={() => openSocial()} />}
         {screen === 'hatchResult' && hatched && <HatchResult chick={hatched} busy={view.busy} reducedMotion={reducedMotion} onActivate={() => activate(hatched.id)} onCollection={() => { setCollectionSection('chicks'); go('collection'); }} />}
         {screen === 'game' && attempt && <FlapsGame key={attempt.runId} attempt={attempt} {...view} sound={preferences.sound} haptics={preferences.haptics} onComplete={finishGame} onLeave={() => { setAttempt(null); go('activities'); }} />}

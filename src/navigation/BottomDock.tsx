@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 export type Tab = 'shop' | 'collection' | 'home' | 'activities' | 'profile';
 
 const items: { tab: Tab; label: string; path: string }[] = [
@@ -9,7 +11,9 @@ const items: { tab: Tab; label: string; path: string }[] = [
 ];
 
 export function BottomDock({ active, onNavigate }: { active: Tab; onNavigate: (tab: Tab) => void }) {
-  return <nav className="bottom-dock" aria-label="Разделы Chipper">
+  const activeIndex = Math.max(0, items.findIndex(item => item.tab === active));
+  return <nav className="bottom-dock" aria-label="Разделы Chipper" style={{ '--dock-index': activeIndex } as CSSProperties}>
+    <span className="dock-lens" aria-hidden="true" />
     {items.map(({ tab, label, path }) => <button type="button" key={tab} className={`dock-item ${tab === 'home' ? 'dock-home' : ''} ${active === tab ? 'selected' : ''}`} aria-label={label} aria-current={active === tab ? 'page' : undefined} onClick={() => onNavigate(tab)}>
       <span className="dock-icon"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path} /></svg></span>
       <span className="dock-label">{label}</span>

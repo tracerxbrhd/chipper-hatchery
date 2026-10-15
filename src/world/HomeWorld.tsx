@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { webApp } from '../api/telegram';
 import { ChickArt, type ChickArtHandle } from '../components/ChickArt';
-import { visualDetailsFor } from '../chicks/models';
+import { genesFor, visualDetailsFor } from '../chicks/models';
+import { buildGeometry } from '../chicks/geometry';
 import type { Chick, GuestChickDTO } from '../types';
 import { cancelWorldTouch, createWorldModel, dragWorldChick, greetWorldChick, lookWorldChick, pickupWorldChick, releaseWorldChick, setWorldTarget, startWorldCare, startWorldGrowth, stepWorld, strokeWorldChick, worldFrame, type WorldFrame } from './worldEngine';
 import { projectWorld, WORLD_FOOD, WORLD_HOME, worldPointFromPointer, worldSeed } from './worldMath';
@@ -82,7 +83,15 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     const measure = () => {
       const { width, height } = node.getBoundingClientRect();
       // The silhouette stays legible on short viewports while keeping its head inside the scene.
-      const measuredSize = Math.max(pair ? 65 : 95, Math.min(pair ? 330 : 430, width * (pair ? .58 : 1.02), height * 1.08));
+      const genes = genesFor(chick);
+      const anatomy = buildGeometry(genes, chick.stage);
+      // Messy crest controls reach y=-49 and rotate by up to 9 degrees;
+      // 56 covers their rotated hull and stroke without cropping at far depth.
+      const headTop = Math.min(anatomy.head.center.y - anatomy.head.height * .62,
+        genes.crestShape === 'none' ? Infinity : anatomy.anchors.crestRoot.y - 56 * anatomy.head.width / 91);
+      const farGround = projectWorld({ u: .5, v: .2 });
+      const heightLimit = (height * farGround.y / 100 - 6) / ((282 - headTop) / 320 * farGround.scale);
+      const measuredSize = Math.max(pair ? 65 : 95, Math.min(pair ? 330 : 430, width * (pair ? .58 : 1.02), heightLimit));
       dimensions.current = { width, height, size: measuredSize };
       setSize(measuredSize);
     };
@@ -90,7 +99,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [pair]);
+  }, [pair, chick.stage, chick.genes]);
 
   useEffect(() => {
     guestModel.current = createGuestWorld(guestChick ? visualDetailsFor(guestChick).fingerprint : worldSeed('guest'));

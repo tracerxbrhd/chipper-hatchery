@@ -14,11 +14,14 @@ const markerDdl = `CREATE TABLE chipper_release_operations (
   remaining_legacy_players INTEGER NOT NULL CHECK(remaining_legacy_players >= 0),
   app_id INTEGER NOT NULL, bot_username TEXT NOT NULL, source_sha TEXT NOT NULL)`;
 
-function resetFixture({ wrongIdentity = false, yielding = false, marker = true, restricted = false } = {}) {
+function resetFixture({ wrongIdentity = false, yielding = false, marker = true, restricted = false, gameplayBudget = false } = {}) {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(`CREATE TABLE chipper_players (telegram_id INTEGER PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0, state_json TEXT NOT NULL);
     CREATE TABLE unrelated_configuration (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     INSERT INTO unrelated_configuration VALUES ('preserve', 'untouched');`);
+  // Current gameplay requires the preserved 0.3 limits migration. The reset
+  // algorithm itself remains tested against its original minimal schema.
+  if (gameplayBudget) sqlite.exec("CREATE TABLE chipper_social_limits (key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL, seen_json TEXT NOT NULL DEFAULT '{}')");
   if (marker) sqlite.exec(markerDdl); // Represents the supported additive migration.
   if (restricted) {
     sqlite.setAuthorizer((action, table) => {
@@ -303,7 +306,7 @@ describe('restricted SQL one-time Chipper 0.2 recovery on real SQLite', () => {
   });
 
   it('same former Telegram accounts restart onboarding, zero progress, starter egg and stable V2 hatch', async () => {
-    const f = resetFixture({ restricted: true }); f.seedOld(); f.seedOld(303); await prepare(f); await apply(f);
+    const f = resetFixture({ restricted: true, gameplayBudget: true }); f.seedOld(); f.seedOld(303); await prepare(f); await apply(f);
     const service = createGameService({ store: createSqliteStore(f.database), now: () => 1791810000000, random: () => 0.1, id: randomUUID });
     for (const id of [101, 303]) {
       const ctx = { initData: { user: { id } } };

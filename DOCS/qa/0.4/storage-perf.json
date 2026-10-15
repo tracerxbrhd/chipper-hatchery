@@ -1,0 +1,132 @@
+{
+  "measuredAt": "2026-10-14T07:46:53.087Z",
+  "sourceRevision": "v0.4 working tree",
+  "runtime": {
+    "node": "v24.19.0",
+    "sqlite": "3.53.3"
+  },
+  "scope": "Local real SQLite and deterministic Node tests. Not Telegram cloud CPU, Android FPS or a production capacity claim.",
+  "flaps": [
+    {
+      "completedRounds": 100,
+      "aggregateBytes": 152074,
+      "baselineBytes": 2478,
+      "receipts": 202,
+      "receiptBytes": 137999,
+      "retainedAttempts": 10,
+      "attemptBytes": 11702,
+      "totalServiceCalls": 200,
+      "elapsedMs": 627.735
+    },
+    {
+      "completedRounds": 1000,
+      "aggregateBytes": 1391935,
+      "baselineBytes": 2478,
+      "receipts": 2002,
+      "receiptBytes": 1377795,
+      "retainedAttempts": 10,
+      "attemptBytes": 11711,
+      "totalServiceCalls": 2000,
+      "elapsedMs": 42521.518
+    }
+  ],
+  "giftLookup": [
+    {
+      "players": 100,
+      "giftsPerPlayer": 5,
+      "totalSyntheticAggregateBytes": 691458,
+      "averageAggregateBytes": 6915,
+      "matchingSenderRows": 10,
+      "productionQuery": {
+        "repetitions": 20,
+        "medianMs": 2.294,
+        "minMs": 1.971,
+        "maxMs": 3.311
+      },
+      "indexedComparison": {
+        "repetitions": 20,
+        "medianMs": 0.094,
+        "minMs": 0.092,
+        "maxMs": 0.125
+      },
+      "productionPlan": [
+        "SCAN p",
+        "CORRELATED SCALAR SUBQUERY 1",
+        "SCAN g VIRTUAL TABLE INDEX 3:"
+      ],
+      "indexedPlan": [
+        "MULTI-INDEX OR",
+        "INDEX 1",
+        "SEARCH chipper_players USING INTEGER PRIMARY KEY (rowid=?)",
+        "INDEX 2",
+        "LIST SUBQUERY 1",
+        "SEARCH synthetic_gift_read_model USING COVERING INDEX sqlite_autoindex_synthetic_gift_read_model_1 (recipient_id=?)",
+        "SEARCH chipper_players USING INTEGER PRIMARY KEY (rowid=?)"
+      ],
+      "ownerLookupPlan": [
+        "SEARCH chipper_players USING INTEGER PRIMARY KEY (rowid=?)"
+      ],
+      "limitation": "Synthetic local five-entry history only. Existing production query scans player JSON. Indexed comparison is a test-only recipient read model, not a deployed migration or capacity guarantee."
+    },
+    {
+      "players": 1000,
+      "giftsPerPlayer": 5,
+      "totalSyntheticAggregateBytes": 6914778,
+      "averageAggregateBytes": 6915,
+      "matchingSenderRows": 100,
+      "productionQuery": {
+        "repetitions": 20,
+        "medianMs": 23.86,
+        "minMs": 21.177,
+        "maxMs": 26.553
+      },
+      "indexedComparison": {
+        "repetitions": 20,
+        "medianMs": 1.051,
+        "minMs": 0.925,
+        "maxMs": 5.938
+      },
+      "productionPlan": [
+        "SCAN p",
+        "CORRELATED SCALAR SUBQUERY 1",
+        "SCAN g VIRTUAL TABLE INDEX 3:"
+      ],
+      "indexedPlan": [
+        "MULTI-INDEX OR",
+        "INDEX 1",
+        "SEARCH chipper_players USING INTEGER PRIMARY KEY (rowid=?)",
+        "INDEX 2",
+        "LIST SUBQUERY 1",
+        "SEARCH synthetic_gift_read_model USING COVERING INDEX sqlite_autoindex_synthetic_gift_read_model_1 (recipient_id=?)",
+        "SEARCH chipper_players USING INTEGER PRIMARY KEY (rowid=?)"
+      ],
+      "ownerLookupPlan": [
+        "SEARCH chipper_players USING INTEGER PRIMARY KEY (rowid=?)"
+      ],
+      "limitation": "Synthetic local five-entry history only. Existing production query scans player JSON. Indexed comparison is a test-only recipient read model, not a deployed migration or capacity guarantee."
+    }
+  ],
+  "compaction": {
+    "aggregateBeforeBytes": 5127,
+    "aggregateAfterBytes": 4444,
+    "attemptBeforeBytes": 1123,
+    "attemptAfterBytes": 450,
+    "savedBytesPerExpiredAttempt": 673,
+    "permanentReceiptsPreserved": true,
+    "terminalIdsAndResultsPreserved": true,
+    "oldStartAndFinishReplayPreserved": true,
+    "freshKeyCannotPayAgain": true,
+    "limitation": "Permanent start receipts retain original bird snapshots; this compacts only duplicated terminal attempt visual payload, not total receipt growth."
+  },
+  "tower": {
+    "initialCheckpointBytes": 216,
+    "maximumShapeBytes": 10917,
+    "allBuildableTilesOccupied": 67,
+    "enemies": 48,
+    "maximumAcceptedCommandBatch": 64,
+    "maximumAcceptedTicks": 1200,
+    "maximumAcceptedBatchBytes": 32768,
+    "storage": "One compact checkpoint in separate chipper_tower_runs; terminal checkpoint cleared only after payment fence; no full action transcript in permanent player JSON.",
+    "limitation": "Maximum-shape synthetic checkpoint, not a real solvable wave or cloud CPU/FPS benchmark."
+  }
+}

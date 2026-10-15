@@ -1,11 +1,13 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { webApp } from '../api/telegram';
 import { ChickArt } from '../components/ChickArt';
-import type { Chick } from '../types';
+import type { Chick, GuestChickDTO } from '../types';
 import { cancelWorldTouch, createWorldModel, dragWorldChick, greetWorldChick, lookWorldChick, pickupWorldChick, releaseWorldChick, setWorldTarget, startWorldCare, startWorldGrowth, stepWorld, strokeWorldChick, worldFrame, type WorldFrame } from './worldEngine';
 import { projectWorld, WORLD_FOOD, WORLD_HOME, worldPointFromPointer, worldSeed } from './worldMath';
 import { beginTouch, finishTouch, holdTouch, HOLD_MS, moveTouch, type TouchGesture, type TouchSession } from './touchGestures';
 import { boundWorldPoint, clamp } from './worldMath';
+import { GuestChick } from './GuestChick';
+import { createGuestWorld, pairOwnerPointFromPointer, projectPair, stepGuestWorld } from './guestWorld';
 import './world.css';
 
 export interface HomeWorldProps {
@@ -17,10 +19,11 @@ export interface HomeWorldProps {
   sleeping?: boolean;
   readOnly?: boolean;
   onTouchFeedback?: (kind: string) => void;
+  guest?: GuestChickDTO | null;
 }
 
 /** A local actor on a projected ground plane. Server actions are the sole care authority. */
-export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Date.now(), sleeping: sleepingOverride, readOnly = false, onTouchFeedback }: HomeWorldProps) {
+export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Date.now(), sleeping: sleepingOverride, readOnly = false, onTouchFeedback, guest }: HomeWorldProps) {
   const instructionsId = useId();
   const surface = useRef<HTMLDivElement>(null);
   const actor = useRef<HTMLButtonElement>(null);
@@ -42,11 +45,18 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   const sleepingRef = useRef(sleeping);
   const previousStage = useRef(chick.stage);
   const frameRef = useRef(frame);
-  const food = projectWorld(WORLD_FOOD);
+  const guestChick = readOnly ? null : guest?.chick;
+  const pair = Boolean(guestChick);
+  const guestModel = useRef(createGuestWorld(worldSeed(guestChick?.id ?? 'guest')));
+  const [guestFrame, setGuestFrame] = useState<WorldFrame>(() => worldFrame(guestModel.current.actor));
+  const pairRef = useRef(pair);
+  pairRef.current = pair;
+  const projectActor = (point: typeof WORLD_HOME) => pairRef.current ? projectPair(point, 'owner') : projectWorld(point);
+  const food = projectActor(WORLD_FOOD);
 
   // Movement and contact transforms update directly; React only updates joint poses at 30 Hz.
   function draw(next: WorldFrame) {
-    const projected = projectWorld(next.position);
+    const projected = projectActor(next.position);
     if (actor.current) {
       actor.current.style.left = `${projected.x}%`;
       actor.current.style.top = `${projected.y}%`;
@@ -67,7 +77,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     const measure = () => {
       const { width, height } = node.getBoundingClientRect();
       // The silhouette stays legible on short viewports while keeping its head inside the scene.
-      const measuredSize = Math.max(95, Math.min(300, width * .78, height * .92));
+      const measuredSize = Math.max(pair ? 65 : 95, Math.min(pair ? 250 : 300, width * (pair ? .48 : .78), height * .92));
       dimensions.current = { width, height, size: measuredSize };
       setSize(measuredSize);
     };
@@ -75,7 +85,13 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [pair]);
+
+  useEffect(() => {
+    guestModel.current = createGuestWorld(worldSeed(guestChick?.id ?? 'guest'));
+    setGuestFrame(worldFrame(guestModel.current.actor));
+    draw(frameRef.current);
+  }, [guestChick?.id, pair]);
 
   useEffect(() => {
     cancelGesture();
@@ -174,9 +190,12 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
       previous = timestamp;
       // Renderer plants a foot for 60% of a cycle, translating it by 16 viewBox units.
       // Matching that stance travel prevents short-screen birds from skating along the plane.
-      const projected = projectWorld(model.current.position);
-      const stride = dimensions.current.size * projected.scale / 320 * (16 / .6) / Math.max(1, dimensions.current.width * .78);
+      const projected = projectActor(model.current.position);
+      const stride = dimensions.current.size * projected.scale / 320 * (16 / .6) / Math.max(1, dimensions.current.width * .78 * (pairRef.current ? .3 : 1));
       const next = stepWorld(model.current, delta, sleepingRef.current, stride);
+      const guestNext = pairRef.current && animate ? stepGuestWorld(guestModel.current, delta, next,
+        dimensions.current.size * .9 / 320 * (16 / .6) / Math.max(1, dimensions.current.width * .78 * .25)) : null;
+      if (guestNext && !session.current && model.current.mode === 'idle' && ['greet', 'look', 'together'].includes(guestModel.current.phase)) lookWorldChick(model.current, 1, 0);
       if (!session.current && ['tap', 'stroke', 'land'].includes(gesture) && !['tap', 'stroke', 'land'].includes(next.mode)) setGesture('idle');
       if (!animate && !['held', 'land', 'tap', 'stroke'].includes(next.mode)) {
         setTransient(false);
@@ -189,12 +208,13 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
         lastPoseAt = timestamp;
         frameRef.current = next;
         setFrame(next);
+        if (guestNext) setGuestFrame(guestNext);
       }
       request = requestAnimationFrame(tick);
     };
     request = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(request);
-  }, [animate, visible, transient, gesture]);
+  }, [animate, visible, transient, gesture, pair]);
 
   const publish = () => {
     const next = worldFrame(model.current);
@@ -215,7 +235,8 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   const approach = (event: PointerEvent<HTMLDivElement>) => {
     if (readOnly || !visible || sleepingRef.current || event.button !== 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const target = worldPointFromPointer(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height);
+    const target = pairRef.current ? pairOwnerPointFromPointer(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height)
+      : worldPointFromPointer(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height);
     if (target && setWorldTarget(model.current, target)) {
       event.preventDefault();
       if (!animate) { model.current.position = target; model.current.target = null; model.current.mode = 'look'; }
@@ -255,7 +276,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
   }
   function maxLift(point = model.current.position) {
     const d = dimensions.current;
-    const projected = projectWorld(point);
+    const projected = projectActor(point);
     // Actual head/crest start below the transparent top of the shared viewBox.
     return Math.max(0, Math.min(d.height * .42, projected.y / 100 * d.height - d.size * projected.scale * .76 - 6));
   }
@@ -296,9 +317,9 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
       const d = dimensions.current;
       const dx = event.clientX - active.start.x;
       const dy = event.clientY - active.start.y;
-      const point = boundWorldPoint({ u: pickupOrigin.current.point.u + dx / Math.max(1, d.width * .78), v: pickupOrigin.current.point.v + dy / Math.max(1, d.height * .31) });
-      const originalGround = projectWorld(pickupOrigin.current.point).y / 100 * d.height;
-      const ground = projectWorld(point).y / 100 * d.height;
+      const point = boundWorldPoint({ u: pickupOrigin.current.point.u + dx / Math.max(1, d.width * .78 * (pairRef.current ? .3 : 1)), v: pickupOrigin.current.point.v + dy / Math.max(1, d.height * .31) });
+      const originalGround = projectActor(pickupOrigin.current.point).y / 100 * d.height;
+      const ground = projectActor(point).y / 100 * d.height;
       const lift = clamp(pickupOrigin.current.lift + ground - originalGround - dy, 0, maxLift(point));
       dragWorldChick(model.current, point, lift);
       if (!animate) { model.current.position = point; model.current.lift = lift; }
@@ -332,13 +353,13 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     if (!visible || readOnly || sleepingRef.current) return;
     if (greetWorldChick(model.current)) { setGesture('tap'); setTransient(true); onTouchFeedback?.('tap'); publish(); }
   };
-  const projected = projectWorld(frame.position);
+  const projected = projectActor(frame.position);
   // Still care keeps its semantic pose even when the engine has a walk target.
   // Tactile poses remain available; motion reduction never disables touch.
   const tactilePose = ['held', 'land', 'tap', 'stroke'].includes(frame.pose);
   const presentationPose = sleeping ? 'sleep' : animate || tactilePose ? frame.pose
     : action === 'feed' || action === 'play' || action === 'grow' ? action : 'look';
-  return <div className={`living-world ${!animate ? 'living-world--still' : ''}`} ref={surface} onPointerDown={approach} onPointerMove={gaze} onPointerLeave={() => lookWorldChick(model.current, 0, 0)} onKeyDown={keyApproach} role="group" tabIndex={readOnly ? -1 : 0} aria-label={`Поляна: ${chick.name}`} aria-describedby={instructionsId} data-mode={frame.mode} data-gesture={gesture} data-read-only={String(readOnly)} data-running={animate && visible ? 'true' : 'false'}>
+  return <div className={`living-world ${!animate ? 'living-world--still' : ''} ${pair ? 'living-world--pair' : ''}`} ref={surface} onPointerDown={approach} onPointerMove={gaze} onPointerLeave={() => lookWorldChick(model.current, 0, 0)} onKeyDown={keyApproach} role="group" tabIndex={readOnly ? -1 : 0} aria-label={`Поляна: ${chick.name}`} aria-describedby={instructionsId} data-mode={frame.mode} data-gesture={gesture} data-read-only={String(readOnly)} data-running={animate && visible ? 'true' : 'false'} data-guest-count={pair ? 1 : 0}>
     <div className="world-light" aria-hidden="true" />
     <svg className="world-ground" viewBox="0 0 600 230" preserveAspectRatio="none" aria-hidden="true">
       <ellipse className="world-ground-base" cx="300" cy="115" rx="283" ry="93" />
@@ -353,6 +374,7 @@ export function HomeWorld({ chick, animate, action = 'idle', actionKey, now = Da
     <button className="world-chick-action" ref={actor} type="button" disabled={sleeping || readOnly} data-growing={animate && visible && frame.mode === 'grow' ? 'true' : undefined} aria-label={`Погладить: ${chick.name}`} onPointerDown={touchDown} onPointerMove={touchMove} onPointerUp={touchUp} onPointerCancel={cancelGesture} onLostPointerCapture={() => { if (session.current) cancelGesture(); }} onClick={event => greet(event.detail)} style={{ left: `${projected.x}%`, top: `${projected.y}%`, width: size, height: size, transform: `translate(-50%, -88.125%) translateY(${-frame.lift}px) scale(${projected.scale}) rotate(${animate && frame.mode === 'held' ? -frame.motion * 4 : 0}deg)` }}>
       <div className="world-chick-visual"><ChickArt chick={chick} pose={presentationPose} direction={frame.direction} phase={animate ? frame.phase : frame.pose === 'tap' || frame.pose === 'land' ? .5 : 0} reaction={frame.reaction} motion={animate ? frame.motion : 0} gaze={frame.gaze} animate={animate && visible} shadow={false} size={size} /></div>
     </button>
+    {guestChick && guest && <GuestChick key={guestChick.id} chick={guestChick} displayName={guest.displayName} frame={guestFrame} size={size} animate={animate && visible} phase={guestModel.current.phase} />}
     <svg className="world-sprig world-sprig--front" viewBox="0 0 44 42" aria-hidden="true"><path d="M22 38V16m0 16C12 23 9 24 5 18m17 11c7-13 13-10 17-18m-17 11C19 10 22 9 25 5" /></svg>
     <span className="world-pebble world-pebble--front" aria-hidden="true" />
     <span className="world-instructions" id={instructionsId}>{readOnly ? 'В гостях — любуемся без забот и перемещений' : sleeping ? 'На поляне тихо и спокойно' : gesture === 'held' || gesture === 'drag' ? 'Отпустите — и птенец мягко приземлится' : gesture === 'stroke' ? 'Вот так, нежно' : frame.mode === 'feed' ? 'Зёрнышки уже на поляне' : frame.mode === 'play' ? 'Как хорошо быть рядом' : 'Погладьте птенца · задержите палец, чтобы поднять'}</span>

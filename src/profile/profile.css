@@ -1,0 +1,15 @@
+.telegram-identity-card { padding: 20px; border-radius: 26px; overflow: hidden; }
+.telegram-identity-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.telegram-avatar { flex: 0 0 72px; width: 72px; height: 72px; display: grid; place-items: center; border-radius: 24px; overflow: hidden; color: var(--text); background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 22%, var(--surface)), var(--surface)); border: 1px solid var(--line); font-size: 25px; font-weight: 750; }
+.telegram-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.telegram-identity-copy { min-width: 0; flex: 1; }
+.telegram-identity-copy .eyebrow { margin: 0 0 5px; }
+.telegram-identity-copy h2 { margin: 0; font-size: clamp(20px, 6vw, 26px); line-height: 1.2; overflow-wrap: anywhere; }
+.telegram-username { margin: 7px 0 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.telegram-identity-private { display: flex; align-items: center; gap: 7px; margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.35; }
+.telegram-identity-private svg { flex: 0 0 15px; width: 15px; height: 15px; }
+@media (max-width: 350px) {
+  .telegram-identity-card { padding: 16px; border-radius: 22px; }
+  .telegram-identity-main { gap: 12px; }
+  .telegram-avatar { flex-basis: 60px; width: 60px; height: 60px; border-radius: 21px; font-size: 23px; }
+}

@@ -1,6 +1,8 @@
 # AGENTS.md
 
-## Chipper 0.4 — Community Expansion (CURRENT implementation task)
+## Chipper 0.4 — Community Expansion (CURRENT implementation)
+
+Реализация0.4 добавлена в `feature/chipper-v0.4`; фактические gates/ограничения и pending native checks — в `DOCS/ACCEPTANCE_RESULT_0.4.md`. Перед изменениями читать `DOCS/CONTRACT_0.4.md`, `DOCS/IMPLEMENTATION_0.4.md`, `DOCS/DEPLOYMENT_0.4.md`. Канонический TD engine — `tgcloud/lib/towerRules.js`, frontend импортирует тот же module. Нельзя оплачивать client wave или удалять sealed/payment fences. Daily/codex/identity hooks находятся в existing owner CAS и atomic gift recipient snapshot.
 
 **READ FIRST:** `DOCS/CODEX_TASK_0.4.md` (master assignment), `DOCS/GDD_0.4.md`, `DOCS/TOWER_DEFENSE_0.4.md`, `DOCS/ARCHITECTURE_0.4.md`, `DOCS/ACCEPTANCE_0.4.md`. These replace old v0.3 task priorities, not old compatibility/safety invariants. Review v0.3 implementation/contracts and full existing source before work. The owner may attach current screenshots to Codex's short start message; inspect real images, do not invent them.
 

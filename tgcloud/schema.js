@@ -1,4 +1,4 @@
-import { table, integer, text, check, sql, index } from 'sdk/db';
+import { table, integer, text, check, sql, index, uniqueIndex } from 'sdk/db';
 
 // Logical players/chicks/eggs/rewards/receipts live in one JSON aggregate.
 // SQLite's single-statement conditional UPDATE is the transaction boundary.
@@ -66,3 +66,22 @@ export const socialLimits = table('chipper_social_limits', {
   key: text('key').primaryKey().notNull(), windowStart: integer('window_start').notNull(), count: integer('count').notNull(),
   seenJson: text('seen_json').notNull().default('{}'),
 }, columns => ({ countCheck: check('chipper_social_limit_count', sql`${columns.count} >= 0`) }));
+
+// v0.4: bounded deterministic checkpoints; compact terminal dedupe is durable.
+export const towerRuns = table('chipper_tower_runs', {
+  runId: text('run_id').primaryKey().notNull(),
+  telegramId: integer('telegram_id').notNull(), revision: integer('revision').notNull().default(0),
+  seed: integer('seed').notNull(), configVersion: text('config_version').notNull(),
+  status: text('status').notNull(), verifiedWave: integer('verified_wave').notNull().default(0),
+  checkpointJson: text('checkpoint_json').notNull(),
+  createdAt: integer('created_at').notNull(), expiresAt: integer('expires_at').notNull(), lastActivityAt: integer('last_activity_at').notNull(),
+  startOperationId: text('start_operation_id').notNull(), lastOperationId: text('last_operation_id'), lastFingerprint: text('last_fingerprint'),
+  finishReason: text('finish_reason'), resultJson: text('result_json'),
+}, columns => ({
+  startKey: uniqueIndex('chipper_tower_start_key').on(columns.telegramId, columns.startOperationId),
+  oneActive: uniqueIndex('chipper_tower_one_active').on(columns.telegramId).where(sql`status IN ('active','settling')`),
+  ownerStatus: index('chipper_tower_owner_status').on(columns.telegramId, columns.status, columns.lastActivityAt),
+  statusCheck: check('chipper_tower_status', sql`${columns.status} IN ('active','settling','finished','expired')`),
+  reasonCheck: check('chipper_tower_finish_reason', sql`${columns.finishReason} IS NULL OR ${columns.finishReason} IN ('retire','defeat')`),
+  stateCheck: check('chipper_tower_state', sql`${columns.revision} >= 0 AND ${columns.verifiedWave} >= 0 AND ${columns.telegramId} > 0`),
+}));

@@ -1,3 +1,4 @@
+import { discoverChickTraits } from './traitCodex.js';
 import { GameError, clone, reconcileState, validateStateVersion } from './domain.js';
 import { verifiedTelegramId, serverId } from './service.js';
 import { areFriends, friendPairKey, peerFor, publicChick } from './social.js';
@@ -321,6 +322,7 @@ export function createGiftService({ database, store, gameService, now = Date.now
             gift.chick = clone(chick);
             senderState.chicks = senderState.chicks.filter((entry) => entry.id !== chick.id);
             actorState.chicks.push(clone(chick));
+            discoverChickTraits(actorState, chick);
           }
           gift.status = accept ? 'accepted' : 'declined'; gift.completedAt = serverNow;
           remember(actorState, params, effect, gift.giftId, serverNow);

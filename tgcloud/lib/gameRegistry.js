@@ -1,10 +1,19 @@
 import { FLAPS_CONFIG } from './flapsRules.js';
 
 export const FLAPS_GAME_ID = 'chippster-flaps';
+export const TOWER_GAME_ID = 'nest-defense';
 const HOUR = 60 * 60 * 1000;
 
 /** Only deployed, reviewed games can issue runs or rewards. No client config. */
 export const GAME_REGISTRY = Object.freeze({
+  [TOWER_GAME_ID]: Object.freeze({
+    gameId: TOWER_GAME_ID, title: 'Защита гнезда', configVersion: 'nest-defense-1',
+    scoreType: 'wave', scoreTrust: 'verified',
+    rewardPolicy: Object.freeze({ amount: 4, cooldownMs: 20 * HOUR,
+      tiers: Object.freeze([{ wave: 3, amount: 1 }, { wave: 8, amount: 2 }, { wave: 15, amount: 3 }, { wave: 25, amount: 4 }]) }),
+    antiAbuse: Object.freeze({ minDurationMs: 0, attemptTtlMs: 24 * HOUR, startLimit: 6, startWindowMs: 60000 }),
+    leaderboard: Object.freeze({ enabled: false, scopes: Object.freeze([]), seasonId: null, scoreTrust: 'verified' }),
+  }),
   [FLAPS_GAME_ID]: Object.freeze({
     gameId: FLAPS_GAME_ID,
     title: 'Chippster Flaps',
@@ -62,6 +71,7 @@ export function migrateGameRecords(player) {
   };
   player.games[FLAPS_GAME_ID] = record;
   syncLegacyAliases(player, record);
+  player.games[TOWER_GAME_ID] ??= emptyGameRecord(GAME_REGISTRY[TOWER_GAME_ID]);
   return player.games;
 }
 

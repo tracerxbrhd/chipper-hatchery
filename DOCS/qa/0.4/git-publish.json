@@ -1,0 +1,23 @@
+{
+  "repository": "tracerxbrhd/chipper-hatchery",
+  "branch": "feature/chipper-v0.4",
+  "baseMain": "6b8c1bb9e32a8ade6a65ff872d34f0e404a4d1f9",
+  "localValidatedCodeCommit": "85116df54fc74b0b8213c6ed1b12b239e1256652",
+  "publishedCodeCommit": "8676ae9b76fcf78dc5b5a9b875c4949dcc8f804c",
+  "localCodeTree": "62538178461948537fa02ae2d2750e2cc523e2bd",
+  "publishedCodeTree": "62538178461948537fa02ae2d2750e2cc523e2bd",
+  "localFirstReportCommit": "1f3124287391d89d3aaf70f2fdbc799e2e1393ce",
+  "publishedFirstReportCommit": "bd421c4862ab75d4e9886c146e2df2f0c8eee1d8",
+  "localFirstReportTree": "b2f770cf2d8bfc72d4853a317483499d978744c9",
+  "publishedFirstReportTree": "b2f770cf2d8bfc72d4853a317483499d978744c9",
+  "method": "GitHub connector Git database API; 200 blob SHAs and both complete tree SHAs matched; no force, no main update. Subsequent changes are docs only.",
+  "localChecks": {
+    "unitIntegrationFiles": 41,
+    "unitIntegrationTests": 474,
+    "uiTests": 79,
+    "mapSeeds": 1000,
+    "screenshots": 98
+  },
+  "pr": "https://github.com/tracerxbrhd/chipper-hatchery/pull/4",
+  "cloudDeployment": "BLOCKED: Serverless CLI credentials unavailable; no cloud database/schema writes"
+}

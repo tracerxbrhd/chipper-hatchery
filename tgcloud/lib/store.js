@@ -1,3 +1,4 @@
+import { consumeRequestBudget } from './requestBudget.js';
 /**
  * SQLite adapter using the documented sdk/db raw API. Keeping the adapter free
  * of SDK imports lets the identical statements run against real SQLite in QA.
@@ -6,6 +7,9 @@
  */
 export function createSqliteStore(database) {
   return {
+    async consumeBudget(actor, kind, timestamp, limit, operationId) {
+      return consumeRequestBudget(database, { actor, kind, now: timestamp, limit, ...(operationId ? { operationId } : {}) });
+    },
     async read(telegramId) {
       const row = await database.get(
         'SELECT revision, state_json FROM chipper_players WHERE telegram_id = :telegramId',

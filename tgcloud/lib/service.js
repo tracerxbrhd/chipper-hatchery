@@ -4,6 +4,10 @@ import {
   validateStateVersion,
 } from './domain.js';
 
+import { dailyBonusStatus } from './dailyBonus.js';
+import { refreshProfileIdentity } from './profileIdentity.js';
+import { traitCodexCatalog } from './traitCodex.js';
+
 /** ctx.initData is verified by Telegram before an endpoint is invoked. */
 export function verifiedTelegramId(ctx) {
   const value = ctx?.initData?.user?.id;
@@ -53,6 +57,7 @@ export function createGameService({ store, now = Date.now, random = serverRandom
       try {
         const telegramId = verifiedTelegramId(ctx);
         const params = validateRequest(method, input);
+        let budgetApplied = false;
         for (let conflict = 0; conflict < 32; conflict += 1) {
           let row = await store.read(telegramId);
           const timestamp = now();
@@ -71,7 +76,13 @@ export function createGameService({ store, now = Date.now, random = serverRandom
           validateStateVersion(row.state);
           const state = reconcileState(clone(row.state), Math.max(timestamp, row.state.updatedAt));
           const serverNow = state.updatedAt;
+          if (method === 'bootstrap' || method === 'getHome') refreshProfileIdentity(state, ctx, serverNow);
           let result;
+          if (!budgetApplied && ['getDailyBonus', 'listTraitCodex', 'bootstrap', 'getHome'].includes(method) && store.consumeBudget) {
+            await store.consumeBudget(telegramId, method, serverNow, method === 'getHome' ? 600 : method === 'bootstrap' ? 120 : 60); budgetApplied = true;
+          }
+          if (method === 'getDailyBonus') result = { dailyBonus: dailyBonusStatus(state, serverNow) };
+          if (method === 'listTraitCodex') result = { codex: traitCodexCatalog(state) };
           if (!isReadMethod(method)) {
             if (Object.hasOwn(state.giftReceipts ?? {}, params.operationId)) throw new GameError('OPERATION_CONFLICT', 'Этот ключ операции уже использован для другого действия.');
             const fingerprint = requestFingerprint(method, params);
@@ -80,6 +91,9 @@ export function createGameService({ store, now = Date.now, random = serverRandom
               if (receipt.fingerprint !== fingerprint) throw new GameError('OPERATION_CONFLICT', 'Этот ключ операции уже использован для другого действия.');
               result = receipt.result;
             } else {
+              if (!budgetApplied && method === 'claimDailyBonus' && store.consumeBudget) {
+                await store.consumeBudget(telegramId, method, serverNow, 60, params.operationId); budgetApplied = true;
+              }
               result = applyMutation(state, method, params, { now: serverNow, random, id });
               // Receipts are permanent, including buying and issuing attempts.
               // Retrying a lost response years later cannot reapply an effect.

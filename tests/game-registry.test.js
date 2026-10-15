@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGameService } from '../tgcloud/lib/service.js';
 import { BALANCE, clone, requestFingerprint, validateRequest } from '../tgcloud/lib/domain.js';
-import { FLAPS_GAME_ID, GAME_REGISTRY, gameConfig, migrateGameRecords, recordGameCompletion } from '../tgcloud/lib/gameRegistry.js';
+import { FLAPS_GAME_ID, TOWER_GAME_ID, GAME_REGISTRY, gameConfig, migrateGameRecords, recordGameCompletion } from '../tgcloud/lib/gameRegistry.js';
 import { ctx, fixture, operation } from './helpers';
 
 async function editState(f, edit) {
@@ -20,7 +20,7 @@ async function round(f, { duration = 2000, score = 0, gameId } = {}) {
 
 describe('0.3 per-game records and additive SQLite migration', () => {
   it('publishes one reviewed playable game and no active leaderboard', () => {
-    expect(Object.keys(GAME_REGISTRY)).toEqual([FLAPS_GAME_ID]);
+    expect(Object.keys(GAME_REGISTRY).sort()).toEqual([FLAPS_GAME_ID, TOWER_GAME_ID].sort());
     expect(gameConfig()).toMatchObject({ gameId: FLAPS_GAME_ID, scoreTrust: 'casual', scoreType: 'points',
       rewardPolicy: { amount: 1, cooldownMs: BALANCE.rewardCooldownMs }, leaderboard: { enabled: false } });
     expect(gameConfig('__proto__')).toBe(null);
@@ -106,7 +106,7 @@ describe('0.3 per-game records and additive SQLite migration', () => {
     expect(loaded.state.player.flaps.completedRuns).toBe(1);
   });
 
-  it.each(['another-game', '__proto__', '', null, 123])('M06 unknown gameId %s cannot create a run or consume one', async gameId => {
+  it.each(['another-game', 'nest-defense', '__proto__', '', null, 123])('M06 unknown gameId %s cannot create a run or consume one', async gameId => {
     const f = fixture(); await f.initial();
     const start = await f.call('startFlapsRun', operation()); f.advance(2000);
     const before = await f.store.read('101');

@@ -1,0 +1,48 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.3.0 check
+> npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-production.mjs && node scripts/check-secrets.mjs
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.3.0 typecheck
+> tsc -b && node scripts/check-server.mjs
+
+Serverless modules: syntax and runtime imports PASS
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.3.0 lint
+> eslint .
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.3.0 test
+> vitest run
+
+
+ RUN  v5.0.4 /workspace/scratch/d0f1040c67ed/chipper-hatchery
+
+
+ Test Files  38 passed (38)
+      Tests  428 passed (428)
+   Start at  10:48:30
+   Duration  50.07s (tests 97%, import 2%, transform 1%)
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> chipper-hatchery@0.3.0 build
+> tsc -b && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 92 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.55 kB │ gzip:   0.36 kB
+dist/assets/TowerDefense-LhFF-xaL.css    4.95 kB │ gzip:   1.44 kB
+dist/assets/index-5v6wn69-.css          55.81 kB │ gzip:  12.13 kB
+dist/assets/TowerDefense-RHSLUFmI.js    30.10 kB │ gzip:  11.17 kB
+dist/assets/index-DaBi68fp.js          377.65 kB │ gzip: 121.85 kB
+✓ built in 1.15s
+Production bundle: development backend and test identities excluded PASS
+Secret patterns: PASS (394 files, 36 commits). No credential directories read.

@@ -19,7 +19,7 @@ async function check(directory) {
   }
 }
 await check(resolve('tgcloud'));
-for (const name of ['chipperV02ResetTemporary.js', 'chipperV03PreflightTemporary.js']) {
+for (const name of ['chipperV02ResetTemporary.js', 'chipperV03PreflightTemporary.js', 'chipperV04PreflightTemporary.js']) {
   try {
     await readFile(resolve(`tgcloud/endpoints/${name}`));
     throw new Error('Temporary administrative endpoint must never be deployed');

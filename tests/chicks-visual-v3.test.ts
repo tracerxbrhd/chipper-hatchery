@@ -38,7 +38,7 @@ describe('visualVersion 3 historical identity contract', () => {
     const siblings = Array.from({ length: 24 }, (_, index) => ({ ...original, id: `sibling-${index}` }));
     expect(new Set(siblings.map((bird) => JSON.stringify(visualDetailsFor(bird)))).size).toBe(24);
     expect(new Set(siblings.map((bird) => visualDetailsFor(bird).personality)).size).toBe(5);
-    expect(new Set(siblings.map((bird) => renderChickSvg({ chick: bird })))).size).toBe(24);
+    expect(new Set(siblings.map((bird) => renderChickSvg({ chick: bird }))).size).toBe(24);
     expect(siblings.every((bird) => bird.genes === original.genes)).toBe(true);
   });
 

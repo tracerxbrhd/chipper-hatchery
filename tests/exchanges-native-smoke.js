@@ -3,7 +3,6 @@
  * Uses production services with synthetic in-memory/on-disk local SQLite only.
  */
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

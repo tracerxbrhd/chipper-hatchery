@@ -2,6 +2,7 @@ import { forwardRef, memo, useId, useImperativeHandle, useLayoutEffect, useMemo,
 import { poseFrame } from '../chicks/animation';
 import type { ChickGeometry, Point } from '../chicks/geometry';
 import type { Stage } from '../types';
+import { webApp } from '../api/telegram';
 import { buildChickMarkup } from '../chicks/renderer';
 import { visualDetailsFor, type ChickDirection, type ChickPose, type ChickVisual } from '../chicks/models';
 import '../art.css';
@@ -26,15 +27,30 @@ export interface ChickArtProps {
 
 const visibilityListeners = new Set<() => void>();
 const onVisibilityChange = () => visibilityListeners.forEach((listener) => listener());
+let nativeInactive = false;
+let stopHostSubscription = () => {};
 function subscribeVisibility(listener: () => void): () => void {
-  if (visibilityListeners.size === 0) document.addEventListener('visibilitychange', onVisibilityChange);
+  if (visibilityListeners.size === 0) {
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    const app = webApp();
+    nativeInactive = app?.isActive === false;
+    const activated = () => { nativeInactive = false; onVisibilityChange(); };
+    const deactivated = () => { nativeInactive = true; onVisibilityChange(); };
+    app?.onEvent('activated', activated);
+    app?.onEvent('deactivated', deactivated);
+    stopHostSubscription = () => { app?.offEvent('activated', activated); app?.offEvent('deactivated', deactivated); };
+  }
   visibilityListeners.add(listener);
   return () => {
     visibilityListeners.delete(listener);
-    if (visibilityListeners.size === 0) document.removeEventListener('visibilitychange', onVisibilityChange);
+    if (visibilityListeners.size === 0) {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      stopHostSubscription();
+      nativeInactive = false;
+    }
   };
 }
-const readHidden = () => document.hidden;
+const readHidden = () => document.hidden || nativeInactive || webApp()?.isActive === false;
 const readServerHidden = () => true;
 const stateToPose: Record<ChickArtState, ChickPose> = {
   idle: 'idle', happy: 'play', feed: 'feed', play: 'play', sleepy: 'look', sleep: 'sleep', hatch: 'hatch', grow: 'grow',
@@ -144,7 +160,7 @@ export const ChickArt = memo(forwardRef<ChickArtHandle, ChickArtProps>(function 
   return <svg ref={svg}
     className={`chick-art chick-art--v2 chick-art--v3 chick-art--${rendered.pose} chick-art--${chick?.stage ?? stage} ${className}`.trim()}
     width={size} height={size} viewBox="0 0 320 320" fill="none" style={style}
-    role="img" aria-label={rendered.label} data-appearance-version="2" data-visual-version="3" data-stage={chick?.stage ?? stage}
+    role="img" aria-label={chick?.name ? `${chick.name}. ${rendered.label}` : rendered.label} data-appearance-version="2" data-visual-version="3" data-stage={chick?.stage ?? stage}
     data-head={rendered.genes.headShape} data-body={rendered.genes.bodyShape} data-pattern={rendered.genes.pattern}
     data-state={state} data-pose={rendered.pose} data-direction={direction}
     data-reaction={reaction}

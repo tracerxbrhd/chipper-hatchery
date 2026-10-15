@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { poseFrame } from '../src/chicks/animation.ts';
 import { buildGeometry } from '../src/chicks/geometry.ts';
 import { NEUTRAL_GENES, SHAPES, visualDetailsFor } from '../src/chicks/models.ts';
-import { COMIC_DURATIONS, createWorldModel, personalityForSeed, startWorldCare, stepWorld, worldFrame, setWorldTarget } from '../src/world/worldEngine.ts';
-import { WORLD_HOME, WORLD_FOOD, isInsideWorld, worldSeed, worldDistance } from '../src/world/worldMath.ts';
+import { COMIC_DURATIONS, createWorldModel, personalityForSeed, startWorldCare, stepWorld, setWorldTarget } from '../src/world/worldEngine.ts';
+import { WORLD_HOME, isInsideWorld, worldSeed, worldDistance } from '../src/world/worldMath.ts';
 const stages=['baby','teen','adult'], comics=Object.keys(COMIC_DURATIONS);
 let samples=0;
 for(const stage of stages) for(const headShape of SHAPES.headShape) for(const bodyShape of SHAPES.bodyShape) for(const legShape of SHAPES.legShape){

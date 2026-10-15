@@ -74,7 +74,7 @@ function checkedState(row, owner, timestamp) {
   return state;
 }
 function sharedOperation(state, operationId, effect) {
-  if (Object.hasOwn(state.giftReceipts ?? {}, operationId)) throw error('OPERATION_CONFLICT', 'Этот ключ уже использован для другого действия.');
+  if (Object.hasOwn(state.giftReceipts ?? {}, operationId) || Object.hasOwn(state.exchangeReceipts ?? {}, operationId)) throw error('OPERATION_CONFLICT', 'Этот ключ уже использован для другого действия.');
   const receipt = Object.hasOwn(state.receipts, operationId) ? state.receipts[operationId] : null;
   if (receipt && receipt.fingerprint !== effect) throw error('OPERATION_CONFLICT', 'Этот ключ уже использован для другого действия.');
   return receipt;
@@ -218,7 +218,7 @@ export function createTowerService({ database, store, gameService, now = Date.no
       // an unrelated shared receipt never blocks the permanent run fence, and
       // is never overwritten. New writers reserve their key before sealing.
       const reserved = Object.hasOwn(state.receipts, row.last_operation_id) ? state.receipts[row.last_operation_id] : null;
-      if (!Object.hasOwn(state.giftReceipts ?? {}, row.last_operation_id)
+      if (!Object.hasOwn(state.giftReceipts ?? {}, row.last_operation_id) && !Object.hasOwn(state.exchangeReceipts ?? {}, row.last_operation_id)
         && (!reserved || reserved.fingerprint === row.last_fingerprint)) {
         state.receipts[row.last_operation_id] = { fingerprint: row.last_fingerprint, result: clone(result), at: state.updatedAt };
       }

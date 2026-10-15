@@ -39,7 +39,7 @@ function contains(points: Point[], point: Point): boolean {
   return inside;
 }
 
-describe('Chick System 2.0 original morphology', () => {
+describe('Chick Visual System 3.0 compatible morphology', () => {
   it('has 30 deterministic valid families covering all palette zones and morphologies', () => {
     expect(PREVIEW_CHICKS).toHaveLength(30);
     expect(new Set(PREVIEW_CHICKS.map((bird) => JSON.stringify(bird.genes))).size).toBe(30);
@@ -177,7 +177,8 @@ describe('Chick System 2.0 original morphology', () => {
       expect(front.geometry.body.center.x).toBe(160);
       expect(front.geometry.anchors.groundContact).toEqual(GROUND_CONTACT);
       const closed = buildChickMarkup({ chick: bird, pose: 'walk', phase: .3, blink: true });
-      expect(closed.markup).not.toContain('class="chick-v2-eye');
+      expect(closed.markup.match(/data-rig="eye-open" opacity="0"/g)).toHaveLength(2);
+      expect(closed.markup.match(/data-rig="eye-closed" opacity="1"/g)).toHaveLength(2);
       expect(closed.markup).toContain('stroke="#f7f1e3"');
     }
   });

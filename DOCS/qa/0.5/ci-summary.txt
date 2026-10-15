@@ -1,0 +1,39 @@
+Source c3b07c8c8a4ce4ded3361d86c982fa9d7c560b92
+Run https://github.com/tracerxbrhd/chipper-hatchery/actions/runs/38695995822
+Job 116292574585; conclusion SUCCESS
+Selected actual job log lines (full logs remain on GitHub Actions):
+2026-10-15T07:01:28.1328763Z (node:2382) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-15T07:01:29.2349728Z ##[group]Run npm ci
+2026-10-15T07:01:29.2350145Z npm ci
+2026-10-15T07:01:31.6257722Z found 0 vulnerabilities
+2026-10-15T07:01:31.6841603Z ##[group]Run npm run check
+2026-10-15T07:01:31.6841930Z npm run check
+2026-10-15T07:01:31.7912418Z > chipper-hatchery@0.5.0 check
+2026-10-15T07:01:31.7913802Z > npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-production.mjs && node scripts/check-secrets.mjs && node scripts/check-visual-contrast.mjs
+2026-10-15T07:01:31.8921487Z > chipper-hatchery@0.5.0 typecheck
+2026-10-15T07:01:31.8922198Z > tsc -b && node scripts/check-server.mjs
+2026-10-15T07:01:37.0682575Z Serverless modules: syntax and runtime imports PASS
+2026-10-15T07:01:37.1718693Z > chipper-hatchery@0.5.0 lint
+2026-10-15T07:01:37.1723332Z > eslint .
+2026-10-15T07:01:41.7374050Z > chipper-hatchery@0.5.0 test
+2026-10-15T07:01:41.7374600Z > vitest run
+2026-10-15T07:02:34.0762056Z  Test Files  47 passed (47)
+2026-10-15T07:02:34.0763280Z       Tests  543 passed (543)
+2026-10-15T07:02:34.0767776Z    Duration  52.05s (tests 96%, import 2%, transform 1%)
+2026-10-15T07:02:34.2195646Z > chipper-hatchery@0.5.0 build
+2026-10-15T07:02:34.2196138Z > tsc -b && vite build
+2026-10-15T07:02:39.2886132Z dist/index.html                          0.55 kB │ gzip:   0.36 kB
+2026-10-15T07:02:39.2887690Z dist/assets/TowerDefense-CTcAyEE1.css    6.23 kB │ gzip:   1.62 kB
+2026-10-15T07:02:39.2889237Z dist/assets/index-TmtZStrM.css          93.99 kB │ gzip:  18.89 kB
+2026-10-15T07:02:39.2891305Z dist/assets/TowerDefense-DAZX2UA1.js    30.11 kB │ gzip:  11.18 kB
+2026-10-15T07:02:39.2892885Z dist/assets/index-DjhwPogg.js          415.45 kB │ gzip: 133.15 kB
+2026-10-15T07:02:39.3683304Z Production bundle: development backend and test identities excluded PASS
+2026-10-15T07:02:56.2569314Z Secret patterns: PASS (468 files, 44 commits). No credential directories read.
+2026-10-15T07:02:56.2950428Z Chipper 0.5 contrast: 36/36 token/base-glass pairs meet normal-text AA (minimum 4.57:1).
+2026-10-15T07:03:16.8444329Z ##[group]Run npm run test:ui
+2026-10-15T07:03:16.8444653Z npm run test:ui
+2026-10-15T07:03:16.9546837Z > chipper-hatchery@0.5.0 test:ui
+2026-10-15T07:03:19.6223803Z Running 103 tests using 2 workers
+2026-10-15T07:06:22.6967778Z   103 passed (3.1m)
+2026-10-15T07:06:23.7919796Z (node:12340) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-15T07:06:25.9304178Z (node:12353) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.

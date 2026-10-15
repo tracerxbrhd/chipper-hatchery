@@ -36,15 +36,18 @@ export async function socialFixture() {
   const f = fixture();
   const { createSocialService } = await import('../../tgcloud/lib/social.js');
   const { createGiftService } = await import('../../tgcloud/lib/gifts.js');
+  const { createExchangeService } = await import('../../tgcloud/lib/exchanges.js');
   const social = createSocialService({ database: f.database, gameService: f.service, now: () => f.now, id: randomUUID });
   const gifts = createGiftService({ database: f.database, store: f.store, gameService: f.service, now: () => f.now, id: randomUUID });
+  const exchanges = createExchangeService({ database: f.database, store: f.store, gameService: f.service, now: () => f.now, id: randomUUID });
   const socialMethods = new Set(['getSocial', 'updatePrivacy', 'createSocialLink', 'resolveSocialLink', 'getPublicProfile', 'visitProfile', 'sendFriendRequest', 'respondFriendRequest', 'removeFriend', 'blockUser']);
   const giftMethods = new Set(['listGifts', 'offerGift', 'respondGift', 'cancelGift']);
+  const exchangeMethods = new Set(['listExchanges', 'offerExchange', 'respondExchange', 'cancelExchange']);
   return {
     ...f,
     async dispatch(method: Method, input: Record<string, unknown>, owner = 101): Promise<ApiResult> {
       const context = { initData: { user: { id: owner, first_name: owner === 101 ? 'Синтетический А' : owner === 202 ? 'Синтетический Б' : 'Синтетический В' } } };
-      return await (giftMethods.has(method) ? gifts : socialMethods.has(method) ? social : f.service).call(method, input, context) as ApiResult;
+      return await (giftMethods.has(method) ? gifts : exchangeMethods.has(method) ? exchanges : socialMethods.has(method) ? social : f.service).call(method, input, context) as ApiResult;
     },
   };
 }

@@ -1,6 +1,17 @@
 # AGENTS.md
 
-## Chipper 0.4 — Community Expansion (CURRENT implementation)
+## Chipper 0.5 — Personality & Visual Overhaul (CURRENT)
+
+Work from actual main3764261 in `feature/chipper-v0.5`; one open PR to main, never merge. Read DOCS/CONTRACT_0.5.md, IMPLEMENTATION_0.5.md, ACCEPTANCE_RESULT_0.5.md and DEPLOYMENT_0.5.md before changes; retain0.3/0.4 safety contracts.
+
+- Keep schemaVersion2, appearanceVersion2, geneSchema1 and every original bird/receipt/release fence. Renderer visualVersion3 is cosmetic deterministic ID+genes only. No reset/reroll/unsafe receipt pruning.
+- `tgcloud/lib/exchanges.js` is mirrored two-owner CAS: exactly both original inactive/nonlast birds move together, no sequential gifts. Gift/exchange reservations and operation namespaces are shared with domain and TD. Preserve permanent claimed achievement IDs and12-entitlement cap.
+- All views/exports/games use the same SVG renderer. Static markup cached; rig updates imperative. Stop hidden/deactivated work, preserve reduced motion, read-only guest and server sleep/care authority.
+- Full npm/check/UI and320/360/390/430 light/dark visual gates remain required. Report actual evidence; browser emulation never means physical Android/iOS PASS. Native diagnostic proofs are complementary.
+- **Current owner scope forbids all production writes until separate explicit confirmation:** no cloud push/migrate/reset/force/webhook/mutating endpoint. Read-only identity/fetch/status/diff/controlled SELECT preflight only. Do not read `.tgcloud` credentials or print tokens.0.4 deployment permission is superseded.
+- New exchange/achievement state makes naive0.4 rollback unsafe; prefer fix-forward. Shop/marketplace deferred to saved0.6 roadmap, no fake checkout.
+
+## Historical 0.4 implementation guidance (superseded task scope)
 
 Реализация0.4 добавлена в `feature/chipper-v0.4`; фактические gates/ограничения и pending native checks — в `DOCS/ACCEPTANCE_RESULT_0.4.md`. Перед изменениями читать `DOCS/CONTRACT_0.4.md`, `DOCS/IMPLEMENTATION_0.4.md`, `DOCS/DEPLOYMENT_0.4.md`. Канонический TD engine — `tgcloud/lib/towerRules.js`, frontend импортирует тот же module. Нельзя оплачивать client wave или удалять sealed/payment fences. Daily/codex/identity hooks находятся в existing owner CAS и atomic gift recipient snapshot.
 

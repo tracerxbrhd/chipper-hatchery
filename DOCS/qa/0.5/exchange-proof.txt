@@ -1,0 +1,7 @@
+PASS atomic original bird swap, reservation and both-owner social achievements
+PASS eight accept/cancel races leave one terminal outcome and unique owners
+PASS lost committed replies, expiry, no private collection probing and before-commit revoke
+PASS SQLite second-row abort rolls back both collections and history
+PASS future entitlement schema refuses all writers before CAS; no client unlocks
+PASS ten independent SQLite writers swap once and pay achievement once
+Exchange/achievement Node + real SQLite smoke: 6 groups PASS. Full npm/browser gates remain separate.

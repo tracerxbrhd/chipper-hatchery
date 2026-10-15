@@ -1,0 +1,106 @@
+name: Chipper manual release
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preflight only, or separately approved deploy'
+        type: choice
+        options: [preflight, deploy]
+        default: preflight
+        required: true
+      source_sha:
+        description: 'Full reviewed commit SHA; empty preflight uses current main'
+        type: string
+        required: false
+      expected_revision:
+        description: 'Deploy only: cloudRevision from reviewed preflight'
+        type: string
+        required: false
+      plan_sha256:
+        description: 'Deploy only: planSha256 from reviewed preflight'
+        type: string
+        required: false
+      confirmation:
+        description: 'Deploy only: type DEPLOY 8924974998 to authorize publishing'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chipper-production-8924974998
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'tracerxbrhd/chipper-hatchery' && github.actor == 'tracerxbrhd' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Pin reviewed source without shell interpolation
+        id: pin
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha }}
+          EVENT_SHA: ${{ github.sha }}
+          RELEASE_MODE: ${{ inputs.mode }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          const { REQUESTED_SHA: requested, EVENT_SHA: event, RELEASE_MODE: mode } = process.env;
+          if (!['preflight', 'deploy'].includes(mode)) throw new Error('Invalid release mode');
+          if (mode === 'deploy' && !requested) throw new Error('Deploy requires the reviewed full source SHA');
+          const sha = requested || event;
+          if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Expected a full lowercase commit SHA');
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha=${sha}\n`);
+          JS
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pin.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require source from the reviewed release branches
+        run: |
+          if git merge-base --is-ancestor HEAD origin/main; then
+            exit 0
+          fi
+          git merge-base --is-ancestor HEAD origin/feature/chipper-v0.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      # The credential is deliberately absent from all install/test/build steps.
+      - name: Read-only plan or explicitly approved publication
+        env:
+          TGCLOUD_TOKEN: ${{ secrets.TGCLOUD_TOKEN }}
+          RELEASE_MODE: ${{ inputs.mode }}
+          RELEASE_SOURCE_SHA: ${{ steps.pin.outputs.sha }}
+          RELEASE_EXPECTED_REVISION: ${{ inputs.expected_revision }}
+          RELEASE_PLAN_SHA256: ${{ inputs.plan_sha256 }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+          TG_CLOUD_API_URL: https://cloud.telegram.org
+          TGCLOUD_BETA: '0'
+          TGCLOUD_DEBUG: '0'
+          NO_COLOR: '1'
+        run: node scripts/github-release-v05.mjs
+      - name: Save sanitized plan for owner review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chipper-release-plan-${{ steps.pin.outputs.sha }}
+          path: release-plan/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Save browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14

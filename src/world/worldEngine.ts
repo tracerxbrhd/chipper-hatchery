@@ -1,6 +1,7 @@
 import { boundWorldPoint, moveWorldPoint, WORLD_BOUNDS, WORLD_FOOD, WORLD_HOME, worldDistance, type WorldPoint } from './worldMath';
 
-export type WorldMode = 'idle' | 'turn' | 'walk' | 'look' | 'preen' | 'peck' | 'yawn' | 'tap' | 'stroke' | 'held' | 'land' | 'feed' | 'play' | 'sleep' | 'wake' | 'grow';
+export type ComicMode = 'sneeze' | 'startle' | 'stretch' | 'shake' | 'stumble';
+export type WorldMode = 'idle' | 'turn' | 'walk' | 'look' | 'preen' | 'peck' | 'yawn' | 'tap' | 'stroke' | 'held' | 'land' | 'feed' | 'play' | 'sleep' | 'wake' | 'grow' | ComicMode;
 export type WorldPose = WorldMode;
 export type WorldDirection = 'left' | 'right' | 'front';
 export interface WorldModel {
@@ -19,12 +20,19 @@ export interface WorldModel {
   liftTarget: number;
   velocity: WorldPoint;
   gaze: { x: number; y: number };
+  /** Presentation only, derived once from identity. Never persisted or rewarded. */
+  personality: ComicMode;
+  ambientWalk: boolean;
 }
 export interface WorldFrame { position: WorldPoint; mode: WorldMode; pose: WorldPose; direction: WorldDirection; phase: number; moving: boolean; reaction: number; lift: number; motion: number; gaze: { x: number; y: number } }
 
 const TURN_SECONDS = .32;
 const WALK_SPEED = .17;
 const STRIDE_LENGTH = .075;
+export const COMIC_DURATIONS: Record<ComicMode, number> = { sneeze: 1.35, startle: .95, stretch: 2.1, shake: 1.15, stumble: 1.2 };
+// Matches visualDetailsFor's dreamer/nosy/wiggler/dandy/clumsy order.
+const COMIC_MODES: ComicMode[] = ['stretch', 'startle', 'shake', 'sneeze', 'stumble'];
+export function personalityForSeed(seed: number): ComicMode { return COMIC_MODES[(seed >>> 0) % COMIC_MODES.length]; }
 
 function random(model: WorldModel): number {
   model.randomState = (Math.imul(model.randomState, 1664525) + 1013904223) >>> 0;
@@ -39,6 +47,7 @@ function changeMode(model: WorldModel, mode: WorldMode) {
 function rest(model: WorldModel) {
   model.target = null;
   model.feeding = false;
+  model.ambientWalk = false;
   model.lift = 0; model.liftTarget = 0; model.velocity = { u: 0, v: 0 };
   changeMode(model, 'idle');
   model.decisionAt = model.time + 5 + random(model) * 7;
@@ -46,7 +55,7 @@ function rest(model: WorldModel) {
 
 export function createWorldModel(seed: number): WorldModel {
   const model: WorldModel = { position: { ...WORLD_HOME }, target: null, mode: 'idle', direction: 'right', time: 0, stateTime: 0, gait: 0, decisionAt: 0, randomState: seed >>> 0, feeding: false,
-    reaction: -1, lift: 0, liftTarget: 0, velocity: { u: 0, v: 0 }, gaze: { x: 0, y: 0 } };
+    reaction: -1, lift: 0, liftTarget: 0, velocity: { u: 0, v: 0 }, gaze: { x: 0, y: 0 }, personality: personalityForSeed(seed), ambientWalk: false };
   model.decisionAt = 3 + random(model) * 3;
   return model;
 }
@@ -62,6 +71,7 @@ export function setWorldTarget(model: WorldModel, target: WorldPoint): boolean {
     return true;
   }
   model.target = goal;
+  model.ambientWalk = false;
   const direction = goal.u < model.position.u ? 'left' : 'right';
   const turning = direction !== model.direction;
   model.direction = direction;
@@ -138,13 +148,16 @@ export function startWorldGrowth(model: WorldModel): boolean {
 
 function autonomousDecision(model: WorldModel) {
   const choice = random(model);
-  if (choice < .6) {
+  if (choice < .43) {
     const angle = random(model) * Math.PI * 2;
     const radius = .35 + random(model) * .5;
     setWorldTarget(model, { u: WORLD_BOUNDS.u + Math.cos(angle) * WORLD_BOUNDS.radiusU * radius, v: WORLD_BOUNDS.v + Math.sin(angle) * WORLD_BOUNDS.radiusV * radius });
+    model.ambientWalk = true;
   } else {
-    model.direction = choice < .85 ? 'front' : model.direction;
-    changeMode(model, choice < .75 ? 'look' : choice < .85 ? 'preen' : choice < .94 ? 'peck' : 'yawn');
+    model.direction = choice < .88 ? 'front' : model.direction;
+    // A favourite action is more likely, but every bird can perform all actions.
+    const comic = choice > .73 ? random(model) < .58 ? model.personality : COMIC_MODES[Math.floor(random(model) * COMIC_MODES.length)] : null;
+    changeMode(model, comic ?? (choice < .59 ? 'look' : choice < .64 ? 'preen' : choice < .69 ? 'peck' : 'yawn'));
   }
 }
 
@@ -183,7 +196,11 @@ export function stepWorld(model: WorldModel, elapsedSeconds: number, sleeping: b
     const move = moveWorldPoint(model.position, model.target, WALK_SPEED * dt);
     model.position = move.point;
     model.gait = (model.gait + move.distance / stride) % 1;
-    if (move.arrived) rest(model);
+    if (move.arrived) {
+      const stumble = model.ambientWalk && model.personality === 'stumble' && random(model) < .55;
+      rest(model);
+      if (stumble) changeMode(model, 'stumble');
+    }
   } else if (model.mode === 'feed') {
     if (model.target) {
       const move = moveWorldPoint(model.position, model.target, WALK_SPEED * dt);
@@ -198,6 +215,7 @@ export function stepWorld(model: WorldModel, elapsedSeconds: number, sleeping: b
   else if (model.mode === 'stroke' && model.stateTime > .85) rest(model);
   else if (model.mode === 'peck' && model.stateTime > 1.1) rest(model);
   else if (model.mode === 'yawn' && model.stateTime > 1.6) rest(model);
+  else if (model.mode in COMIC_DURATIONS && model.stateTime >= COMIC_DURATIONS[model.mode as ComicMode]) rest(model);
   else if (model.mode === 'idle' && model.time >= model.decisionAt) autonomousDecision(model);
   return worldFrame(model);
 }
@@ -205,7 +223,7 @@ export function stepWorld(model: WorldModel, elapsedSeconds: number, sleeping: b
 export function worldFrame(model: WorldModel): WorldFrame {
   const moving = model.mode === 'walk' || (model.mode === 'feed' && model.target !== null);
   const pose: WorldPose = moving ? 'walk' : model.mode;
-  const duration = model.mode === 'turn' ? TURN_SECONDS : model.mode === 'wake' ? .65 : model.mode === 'grow' ? 1.5 : model.mode === 'look' ? 1.4 : model.mode === 'preen' ? 1.9 : model.mode === 'tap' ? .65 : model.mode === 'land' ? .42 : model.mode === 'peck' ? 1.1 : model.mode === 'yawn' ? 1.6 : null;
+  const duration = model.mode in COMIC_DURATIONS ? COMIC_DURATIONS[model.mode as ComicMode] : model.mode === 'turn' ? TURN_SECONDS : model.mode === 'wake' ? .65 : model.mode === 'grow' ? 1.5 : model.mode === 'look' ? 1.4 : model.mode === 'preen' ? 1.9 : model.mode === 'tap' ? .65 : model.mode === 'land' ? .42 : model.mode === 'peck' ? 1.1 : model.mode === 'yawn' ? 1.6 : null;
   const phase = moving ? model.gait : duration !== null ? Math.min(1, model.stateTime / duration) : (model.stateTime / (model.mode === 'sleep' ? 4.5 : model.mode === 'feed' ? .75 : model.mode === 'play' ? .6 : 3.7)) % 1;
   return { position: { ...model.position }, mode: model.mode, pose, direction: model.direction, phase, moving,
     reaction: model.reaction, lift: model.lift, motion: Math.max(-1, Math.min(1, model.velocity.u * 3)), gaze: { ...model.gaze } };

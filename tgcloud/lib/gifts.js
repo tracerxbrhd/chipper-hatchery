@@ -1,5 +1,5 @@
 import { discoverChickTraits } from './traitCodex.js';
-import { GameError, clone, reconcileState, validateStateVersion } from './domain.js';
+import { GameError, clone, reconcileState, validateStateVersion, chickReservation, recordEvent } from './domain.js';
 import { verifiedTelegramId, serverId } from './service.js';
 import { areFriends, friendPairKey, peerFor, publicChick } from './social.js';
 
@@ -15,8 +15,7 @@ const METHODS = {
 
 /** Presentation and mutation guards use the same server-time reservation rule. */
 export function isChickReserved(state, chickId, now) {
-  return Array.isArray(state.gifts) && state.gifts.some((gift) => gift.chick?.id === chickId
-    && gift.status === 'pending' && gift.expiresAt > now);
+  return Boolean(chickReservation(state, chickId, now));
 }
 
 function validate(method, input) {
@@ -106,7 +105,7 @@ function receipt(state, operationId, effect) {
   }
   // Operation IDs are shared with game actions; an actor cannot reuse a durable
   // key in another subsystem and accidentally change its original meaning.
-  if (Object.hasOwn(state.receipts, operationId)) {
+  if (Object.hasOwn(state.receipts, operationId) || Object.hasOwn(state.exchangeReceipts ?? {}, operationId)) {
     throw new GameError('OPERATION_CONFLICT', 'Этот ключ операции уже использован для другого действия.');
   }
   return previous;
@@ -318,11 +317,14 @@ export function createGiftService({ database, store, gameService, now = Date.now
             if (!(await areFriends(database, senderId, actorId))) throw new GameError('FRIEND_REQUIRED', 'Для принятия подарка нужна действующая дружба.');
             const chick = senderState.chicks.find((entry) => entry.id === gift.chick.id);
             if (!chick || senderState.chicks.length <= 1 || senderState.player.activeChickId === chick.id) throw new Error('Invalid reserved ownership');
+            if (chickReservation(senderState, chick.id, serverNow)?.kind === 'exchange') throw new GameError('CHICK_RESERVED', 'Цыплёнок участвует в обмене.');
             if (actorState.chicks.some((entry) => entry.id === chick.id)) throw new Error('Duplicate gift ownership');
             gift.chick = clone(chick);
             senderState.chicks = senderState.chicks.filter((entry) => entry.id !== chick.id);
             actorState.chicks.push(clone(chick));
             discoverChickTraits(actorState, chick);
+            recordEvent(senderState, 'gift_accepted', serverNow);
+            recordEvent(actorState, 'gift_accepted', serverNow);
           }
           gift.status = accept ? 'accepted' : 'declined'; gift.completedAt = serverNow;
           remember(actorState, params, effect, gift.giftId, serverNow);

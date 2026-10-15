@@ -37,7 +37,7 @@ describe('verified context and ownership', () => {
     expect((await f.call('getHome')).state.chicks[0].name).toBe('Луна');
   });
   it('does not expose receipts, attempts, analytics or other players in snapshots', async () => {
-    const f = fixture(); await f.initial(); const r = await f.call('getHome'); expect(Object.keys(r.state).sort()).toEqual(['balanceVersion', 'chicks', 'codex', 'dailyBonus', 'egg', 'player', 'revision', 'serverNow']);
+    const f = fixture(); await f.initial(); const r = await f.call('getHome'); expect(Object.keys(r.state).sort()).toEqual(['achievements', 'balanceVersion', 'chicks', 'codex', 'dailyBonus', 'egg', 'player', 'revision', 'serverNow']);
     expect(r.state.chicks[0]).not.toHaveProperty('pendingFeedAt');
   });
 });

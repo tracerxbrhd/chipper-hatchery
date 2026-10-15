@@ -4,8 +4,8 @@ export const FIELD_WIDTH = 360, FIELD_HEIGHT = 504, TILE = 36;
 interface Theme { background: string; cell: string; grid: string; road: string; edge: string; ink: string; accent: string; nest: string; tower: string }
 export function towerTheme(): Theme {
   return document.documentElement.dataset.theme === 'dark'
-    ? { background: '#1c2828', cell: '#263934', grid: '#365046', road: '#605344', edge: '#ad9879', ink: '#f0eee7', accent: '#b5c8aa', nest: '#d2b287', tower: '#d8dfd1' }
-    : { background: '#e8eee3', cell: '#eff3e9', grid: '#c8d2bf', road: '#dacbb6', edge: '#ad9776', ink: '#354034', accent: '#739065', nest: '#aa7848', tower: '#ffffff' };
+    ? { background: '#211d35', cell: '#342d48', grid: '#544866', road: '#72576a', edge: '#cfac90', ink: '#fff5e9', accent: '#b2d9ba', nest: '#ffb886', tower: '#9b85bd' }
+    : { background: '#e8e2ed', cell: '#f6f0df', grid: '#d3c7dd', road: '#e4cbb3', edge: '#b88e70', ink: '#352c46', accent: '#648b65', nest: '#a94527', tower: '#fffdf8' };
 }
 const center = (cell: TowerCell) => ({ x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2 });
 function ellipse(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number) { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); }

@@ -4,10 +4,11 @@ import { maximumPlausibleScore } from './flapsRules.js';
 import { claimDailyBonus, dailyBonusStatus } from './dailyBonus.js';
 import { discoverOwnedTraits, discoverChickTraits, traitCodexStatus } from './traitCodex.js';
 import { FLAPS_GAME_ID, gameConfig, migrateGameRecords, recordGameCompletion } from './gameRegistry.js';
+import { achievementStatus, claimAchievement } from './achievements.js';
 const HOUR = 60 * 60 * 1000;
 
 export const BALANCE = Object.freeze({
-  version: '0.4.0',
+  version: '0.5.0',
   hourMs: HOUR,
   careCooldownMs: 4 * HOUR,
   careCycleWindowMs: 30 * 60 * 1000,
@@ -43,9 +44,10 @@ export function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-const READ_METHODS = ['bootstrap', 'getHome', 'listChicks', 'getIncubator', 'getDailyBonus', 'listTraitCodex'];
+const READ_METHODS = ['bootstrap', 'getHome', 'listChicks', 'getIncubator', 'getDailyBonus', 'listTraitCodex', 'getAchievements'];
 const PARAMS = Object.freeze({
   claimDailyBonus: [],
+  claimAchievement: ['achievementId'],
   hatchEgg: ['eggId'],
   completeOnboarding: [],
   careAction: ['chickId', 'action'],
@@ -114,6 +116,7 @@ export function validateRequest(method, input) {
   const canonical = { operationId: params.operationId.toLowerCase() };
   if (PARAMS[method].includes('chickId')) canonical.chickId = requireId(params.chickId);
   if (method === 'hatchEgg') canonical.eggId = requireId(params.eggId);
+  if (method === 'claimAchievement') canonical.achievementId = requireId(params.achievementId);
   if (method === 'careAction') {
     if (!['feed', 'play', 'sleep'].includes(params.action)) {
       throw new GameError('INVALID_REQUEST', 'Выберите действие ухода.');
@@ -278,6 +281,7 @@ export function snapshot(state, revision, now) {
     player: clone(state.player),
     dailyBonus: dailyBonusStatus(state, now),
     codex: traitCodexStatus(state),
+    achievements: achievementStatus(state),
     chicks: state.chicks.map((chick) => ({
       id: chick.id, appearanceId: chick.appearanceId, rarity: chick.rarity,
       appearanceVersion: 2, genes: clone(chick.genes),
@@ -286,6 +290,7 @@ export function snapshot(state, revision, now) {
       lastFeedAt: chick.lastFeedAt, lastPlayAt: chick.lastPlayAt,
       sleepUntil: chick.sleepUntil, careMilestones: [...chick.careMilestones],
       ...(reservedGiftId(state, chick.id, now) ? { reservedGiftId: reservedGiftId(state, chick.id, now) } : {}),
+      ...(reservedExchangeId(state, chick.id, now) ? { reservedExchangeId: reservedExchangeId(state, chick.id, now) } : {}),
     })),
     egg: currentEgg ? { id: currentEgg.id, kind: currentEgg.kind, createdAt: currentEgg.createdAt, readyAt: currentEgg.readyAt } : null,
   };
@@ -312,10 +317,30 @@ export function validateStateVersion(state) {
   if (!state.player?.flaps || state.chicks.some((chick) => chick.appearanceVersion !== 2 || !validGenes(chick.genes))) {
     throw new GameError('INVALID_SAVE', 'Не удалось прочитать сохранение. Попробуйте ещё раз.', { retryable: true });
   }
+  // Validate new permanent entitlements before any reconciliation/CAS. Unknown
+  // future fences must never be silently downgraded or followed by a credit.
+  achievementStatus(state);
+  if (state.exchanges !== undefined && state.exchanges !== null
+    && (!Array.isArray(state.exchanges) || state.exchanges.some(entry => !entry || entry.version !== 1))) {
+    throw new GameError('INVALID_SAVE', 'Обновите игру, чтобы прочитать историю обменов.', { retryable: true });
+  }
 }
 
 function reservedGiftId(state, chickId, now) {
   return state.gifts?.find((gift) => gift.chick?.id === chickId && gift.status === 'pending' && gift.expiresAt > now)?.giftId ?? null;
+}
+
+export function reservedExchangeId(state, chickId, now) {
+  return state.exchanges?.find(entry => String(entry.senderId) === state.player.telegramId
+    && entry.offeredChick?.id === chickId && entry.status === 'pending' && entry.expiresAt > now)?.exchangeId ?? null;
+}
+
+/** Shared ownership-transfer reservation; requested foreign birds stay free. */
+export function chickReservation(state, chickId, now, excludeExchangeId = null) {
+  const giftId = reservedGiftId(state, chickId, now);
+  if (giftId) return { kind: 'gift', id: giftId };
+  const exchangeId = reservedExchangeId(state, chickId, now);
+  return exchangeId && exchangeId !== excludeExchangeId ? { kind: 'exchange', id: exchangeId } : null;
 }
 
 function ownChick(state, chickId, requireActive = false, now = null) {
@@ -324,8 +349,8 @@ function ownChick(state, chickId, requireActive = false, now = null) {
   if (requireActive && state.player.activeChickId !== chick.id) {
     throw new GameError('CHICK_NOT_ACTIVE', 'Сначала сделайте этого цыплёнка активным.');
   }
-  if (now !== null && reservedGiftId(state, chickId, now)) {
-    throw new GameError('CHICK_RESERVED', 'Цыплёнок ожидает принятия подарка. Сначала отмените предложение.');
+  if (now !== null && chickReservation(state, chickId, now)) {
+    throw new GameError('CHICK_RESERVED', 'Цыплёнок участвует в предложении. Сначала отмените его.');
   }
   return chick;
 }
@@ -416,6 +441,7 @@ function care(state, params, now) {
 export function applyMutation(state, method, params, { now, random, id }) {
   switch (method) {
     case 'claimDailyBonus': return claimDailyBonus(state, now);
+    case 'claimAchievement': return claimAchievement(state, params.achievementId, now);
     case 'hatchEgg': return hatch(state, params.eggId, now, random, id);
     case 'completeOnboarding': {
       if (state.chicks.length === 0) throw new GameError('FIRST_HATCH_REQUIRED', 'Сначала помогите цыплёнку вылупиться.');

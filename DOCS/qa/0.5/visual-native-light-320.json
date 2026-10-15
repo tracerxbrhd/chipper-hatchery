@@ -1,0 +1,120 @@
+{
+  "evidence": "Actual Chromium rendering of built App with synthetic Telegram Android safe areas and real local SQLite services. Not physical-device, signed-live, or performance evidence.",
+  "browser": "156.0.8078.4",
+  "viewport": {
+    "width": 320,
+    "height": 568
+  },
+  "theme": "light",
+  "geometry": {
+    "dock": {
+      "x": 8,
+      "y": 472,
+      "width": 304,
+      "height": 68,
+      "bottom": 540
+    },
+    "summary": {
+      "x": 12,
+      "y": 418.375244140625,
+      "width": 296,
+      "height": 44,
+      "bottom": 462.375244140625
+    },
+    "care": [
+      {
+        "width": 94.65625,
+        "height": 71.1875,
+        "bottom": 410.375244140625
+      },
+      {
+        "width": 94.671875,
+        "height": 71.1875,
+        "bottom": 410.375244140625
+      },
+      {
+        "width": 94.65625,
+        "height": 71.1875,
+        "bottom": 410.375244140625
+      }
+    ],
+    "tabs": [
+      {
+        "width": 58,
+        "height": 54
+      },
+      {
+        "width": 58,
+        "height": 54
+      },
+      {
+        "width": 58,
+        "height": 54
+      },
+      {
+        "width": 58,
+        "height": 54
+      },
+      {
+        "width": 58,
+        "height": 54
+      }
+    ],
+    "mainOverflow": 0
+  },
+  "supportedGlass": {
+    "supported": true,
+    "backdrop": "blur(20px) saturate(1.45)",
+    "background": "rgba(255, 250, 240, 0.68)",
+    "reflection": "linear-gradient(165deg, rgba(255, 255, 255, 0.63), rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 63%, rgba(255, 255, 255, 0.07)), linear-gradient(92deg, rgba(255, 255, 255, 0.15), rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 78%, rgba(255, 255, 255, 0.125))",
+    "reflectionDisplay": "block",
+    "lens": "matrix(1, 0, 0, 1, 116, 0)"
+  },
+  "opaqueGlass": {
+    "supported": true,
+    "backdrop": "none",
+    "background": "rgb(255, 250, 242)",
+    "reflection": "linear-gradient(165deg, rgba(255, 255, 255, 0.63), rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 63%, rgba(255, 255, 255, 0.07)), linear-gradient(92deg, rgba(255, 255, 255, 0.15), rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 78%, rgba(255, 255, 255, 0.125))",
+    "reflectionDisplay": "none",
+    "lens": "matrix(1, 0, 0, 1, 154.756, 0)"
+  },
+  "contrastScope": "Computed text and opaque base surface colors; does not measure gradient/reflection pixels or antialiasing.",
+  "contrast": [
+    {
+      "text": ".home-heading h1",
+      "surface": ".app",
+      "foreground": "rgb(53, 44, 70)",
+      "background": "rgb(255, 247, 233)",
+      "ratio": 12.332404629641218
+    },
+    {
+      "text": ".home-heading .stage-label",
+      "surface": ".app",
+      "foreground": "rgb(112, 96, 120)",
+      "background": "rgb(255, 247, 233)",
+      "ratio": 5.431119634416894
+    },
+    {
+      "text": ".collection-card strong",
+      "surface": ".collection-card",
+      "foreground": "rgb(53, 44, 70)",
+      "background": "rgb(255, 253, 248)",
+      "ratio": 12.910266194802512
+    },
+    {
+      "text": ".profile-stat span",
+      "surface": ".profile-stat",
+      "foreground": "rgb(112, 96, 120)",
+      "background": "rgb(238, 228, 255)",
+      "ratio": 4.727586433666214
+    },
+    {
+      "text": ".dock-label",
+      "surface": ".bottom-dock",
+      "foreground": "rgb(53, 44, 70)",
+      "background": "rgb(255, 250, 242)",
+      "ratio": 12.629550399936571
+    }
+  ],
+  "pageErrors": []
+}

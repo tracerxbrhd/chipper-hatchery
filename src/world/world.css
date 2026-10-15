@@ -78,3 +78,58 @@
 .living-world--pair .world-pebble--front{left:10%}
 .living-world--still .world-guest,.reduce-motion .world-guest{will-change:auto}
 @media(prefers-reduced-motion:reduce){.world-guest{will-change:auto}}
+
+/* 0.5: a small layered garden. Every environmental layer is pointer-transparent. */
+.living-world{--world-sky:#e8eee2;--world-hill-far:#c9d8bd;--world-hill-near:#b6cda6;--world-ground:#dbe5c2;--world-rim:#a4b78d;--world-pool:#eaf0d5;--world-edge:#8d9f7b;--world-grass:#56794d;--world-stone:#a49d91;--world-glow:#fff6c9a8;min-height:130px;border-radius:28px;background:var(--world-sky);box-shadow:inset 0 1px 0 #ffffff8c;container-type:size}
+.world-sky{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 68% 13%,#fff9d5 0%,transparent 42%),linear-gradient(180deg,#dfe9e9 0%,var(--world-sky) 65%);opacity:.95}
+.world-celestial{position:absolute;top:10%;right:13%;width:38px;height:38px;border-radius:50%;background:#fff4c1;box-shadow:0 0 0 10px #fff4c126,0 0 0 25px #fff4c112;pointer-events:none}
+.world-celestial i{position:absolute;display:block;width:30px;height:9px;border-radius:50%;background:#ffffffe0;left:-165%;top:50%;transform:rotate(-5deg)}
+.world-celestial i:nth-child(2){width:55px;top:90%;left:155%;opacity:.5}
+.world-celestial i:nth-child(3){width:36px;top:-25%;left:-320%;opacity:.7}
+.world-landscape{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.world-hill-far{fill:var(--world-hill-far);opacity:.55}
+.world-hill-near{fill:var(--world-hill-near);opacity:.45}
+.world-distant-grass{stroke:var(--world-grass);stroke-width:5;stroke-linecap:round;fill:none;opacity:.18}
+.world-light{inset:8% 4% 8%;background:radial-gradient(ellipse at 48% 50%,var(--world-glow),transparent 68%)}
+.world-ground{top:49%;height:46%;filter:none}
+.world-ground-rim{fill:var(--world-rim);opacity:.55}
+.world-ground-base{fill:var(--world-ground)}
+.world-ground-pool{fill:var(--world-pool);opacity:.55}
+.world-ground-contour{stroke:var(--world-edge);stroke-width:2;opacity:.35}
+.world-ground-trail{stroke:var(--world-edge);stroke-width:1.5;opacity:.32}
+.world-shadow{background:#35322f;mix-blend-mode:multiply}
+.world-sprig{stroke:var(--world-grass)}
+.world-sprig--back{left:10%;top:54%;opacity:.72;width:27px;height:30px}
+.world-sprig--front{right:9%;bottom:15%;width:36px;height:40px;opacity:.8}
+.world-pebble--front{left:15%;bottom:18%;width:18px;height:7px}
+.world-flowers{position:absolute;left:5%;bottom:22%;width:42px;height:48px;z-index:1;pointer-events:none;overflow:visible}
+.world-flowers>path{fill:none;stroke:var(--world-grass);stroke-width:2;stroke-linecap:round}
+.world-flowers>g{fill:var(--accent-lilac,#b194dc);stroke:#fff8e7;stroke-width:2}
+.world-flowers>circle{fill:#eccb73}
+.world-instructions{bottom:6px;font-size:10px;left:14px;right:14px;color:var(--ink);opacity:.78;text-shadow:0 1px 10px var(--world-ground)}
+.world-mote{position:absolute;width:4px;height:4px;border-radius:50%;pointer-events:none;background:#fff4b8;box-shadow:0 0 9px #fff4b880;opacity:0;animation:world-mote-drift 8s ease-in-out infinite}
+.world-mote--one{left:18%;top:29%;animation-delay:-2s}
+.world-mote--two{left:74%;top:42%;animation-delay:-5s;animation-duration:11s;width:3px;height:3px}
+.world-mote--three{left:34%;top:16%;animation-delay:-7s;animation-duration:13s;width:3px;height:3px}
+.world-whimsy{position:absolute;left:12%;right:12%;top:5%;text-align:center;font-size:10px;line-height:1.4;color:var(--ink);opacity:.9;pointer-events:none;animation:world-whimsy 1.3s ease-out both}
+.living-world[data-running=false] .world-mote,.living-world[data-running=false] .world-heart,.living-world[data-running=false] .world-whimsy{animation-play-state:paused}
+.living-world--still .world-mote{display:none}
+.living-world--pair .world-flowers{width:32px;height:38px;left:1%;bottom:23%}
+.living-world--pair .world-instructions{font-size:9px}
+.world-guest-label{bottom:23px;color:var(--ink);font-size:9px;opacity:.8}
+[data-theme=dark] .living-world{--world-sky:#24223d;--world-hill-far:#55516f;--world-hill-near:#495472;--world-ground:#566578;--world-rim:#30394f;--world-pool:#72819a;--world-edge:#c0c7dd;--world-grass:#b8d3b7;--world-stone:#a69ea4;--world-glow:#c8b9ff42;box-shadow:inset 0 1px 0 #b6a8e91c}
+[data-theme=dark] .world-sky{background:radial-gradient(ellipse at 68% 13%,#7566a34d 0%,transparent 42%),linear-gradient(180deg,#1d1b35 0%,var(--world-sky) 68%)}
+[data-theme=dark] .world-celestial{background:#f2dcbb;box-shadow:0 0 0 10px #f2dcbb09,0 0 0 25px #f2dcbb05;transform:rotate(-18deg)}
+[data-theme=dark] .world-celestial:after{content:'';position:absolute;inset:-2px -2px 8px 10px;border-radius:50%;background:#29253f}
+[data-theme=dark] .world-celestial i{background:#e1d5ff;left:-170%;top:50%;width:3px;height:3px;opacity:.8}
+[data-theme=dark] .world-celestial i:nth-child(2){left:180%;top:90%;width:3px;height:3px;opacity:.7}
+[data-theme=dark] .world-celestial i:nth-child(3){left:-320%;top:-25%;width:2px;height:2px}
+[data-theme=dark] .world-mote{opacity:.6}
+[data-theme=dark] .world-shadow{background:#13111d;mix-blend-mode:normal}
+[data-theme=dark] .world-ground-pool{opacity:.38}
+@keyframes world-mote-drift{0%,100%{transform:translate(0,0);opacity:.1}35%{opacity:.75}65%{transform:translate(9px,-10px);opacity:.5}}
+@keyframes world-whimsy{0%{opacity:0;transform:translateY(4px)}25%,80%{opacity:.9;transform:translateY(0)}100%{opacity:0}}
+@container(max-height:230px){.world-celestial{top:7%;width:25px;height:25px}.world-whimsy{top:2%;font-size:9px}.world-flowers{height:29px;width:28px}.world-instructions{font-size:9px;bottom:3px}.world-mote--three{display:none}}
+@media(prefers-reduced-motion:reduce){.world-mote{display:none}.world-whimsy{animation:none}}
+.reduce-motion .world-mote,[data-motion=off] .world-mote{display:none}
+.reduce-motion .world-whimsy,[data-motion=off] .world-whimsy{animation:none}

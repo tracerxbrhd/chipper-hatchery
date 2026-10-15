@@ -39,7 +39,9 @@ describe('Codex presentation contract', () => {
     expect(markup).toContain('Круглая');
     expect(markup).toContain('Голубой туман');
     expect(markup).toContain('data-reduced-motion="true"');
-    expect(markup).not.toContain('999');
+    expect(markup).toContain('data-testid="codex-total">2<small> / 51</small>');
+    expect(markup).toContain('aria-valuemax="51"');
+    expect(markup).not.toMatch(/aria-value(?:now|max)="999"/);
   });
 
   it('missing/unknown schema shows refresh message and cannot reinterpret future IDs', () => {

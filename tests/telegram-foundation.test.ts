@@ -75,7 +75,7 @@ describe('Telegram scene foundation', () => {
     expect(h.properties.get('--app-height')).toBe('400px');
     h.app.colorScheme = 'dark'; h.listeners.get('themeChanged')?.();
     expect(h.root.dataset.theme).toBe('dark');
-    expect(h.app.setBottomBarColor).toHaveBeenLastCalledWith('#131719');
+    expect(h.app.setBottomBarColor).toHaveBeenLastCalledWith('#17152b');
     expect(h.properties.get('--tg-system-top')).toBe('20px');
     expect(h.properties.get('--tg-content-top')).toBe('44px');
     expect(h.properties.get('--tg-chrome-top')).toBe('20px');

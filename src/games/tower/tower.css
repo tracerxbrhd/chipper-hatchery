@@ -22,3 +22,19 @@
 @media(pointer:fine) { .tower-key-help { display:inline; } }
 @media(max-width:340px) { .tower-header h1 { font-size:11px; padding:0; }.tower-tools { gap:3px; }.tower-tools button { gap:3px; }.tower-tools b { font-size:19px; }.tower-tools span { font-size:9px; }.tower-dialog { padding:18px 13px; } }
 @media(max-height:640px) { .tower-game { gap:3px; }.tower-hud strong { font-size:15px; }.tower-round { width:44px; height:44px; }.tower-tools button { min-height:44px; }.tower-selection small { display:block; font-size:8px; margin-top:3px; }.tower-selection > button { min-height:44px; }.tower-wave.button { min-height:44px; padding:7px; }.tower-tip { min-height:21px; font-size:9px; }.tower-reward-note { font-size:8px; } }
+
+.tower-hud > div { background: var(--paper); padding: 6px 8px; border-radius: 13px; border: 1px solid var(--line); min-width: 44px; }
+.tower-hud strong { color: var(--apricot); }
+.tower-round { background: var(--paper); border-color: var(--line); box-shadow: var(--card-shadow); }
+.tower-round:disabled { opacity: 1; background: var(--soft); color: var(--muted); box-shadow: none; }
+.tower-tools button { background: var(--paper); border-color: var(--line); box-shadow: var(--card-shadow); }
+.tower-tools button.selected { background: var(--lilac-soft); color: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tower-tools button:disabled, .tower-selection button:disabled { opacity: 1; background: var(--soft); color: var(--muted); box-shadow: none; }
+.tower-tools button:nth-child(2) b { color: var(--apricot); }
+.tower-tools button:nth-child(3) b { color: var(--mint); }
+.tower-surface { border-color: var(--line); box-shadow: var(--card-shadow); }
+.tower-overlay { background: #25183d88; }
+.tower-dialog { border-color: var(--glass-outline); background: var(--paper); box-shadow: var(--shadow); }
+.tower-result-mark { color: var(--apricot); }
+.tower-result-stats { padding: 16px 10px; border-radius: 20px; background: var(--lilac-soft); }
+.tower-saving { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow); }

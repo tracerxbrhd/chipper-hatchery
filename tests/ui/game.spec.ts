@@ -167,7 +167,7 @@ test('Living World approaches a field target and care cancels walking; preferenc
 });
 
 test('dev gallery shows 90 V2 age variants, morphology controls and dark 320px preview', async ({ page }) => {
-  await page.goto('/?art=1'); await expect(page.getByRole('heading', { name: 'Chick System 2.0 · Touchy Feel', exact: true })).toBeVisible();
+  await page.goto('/?art=1'); await expect(page.getByRole('heading', { name: 'Chick Visual System 3.0', exact: true })).toBeVisible();
   await expect(page.locator('.gallery-age-row .chick-art')).toHaveCount(90);
   await page.getByLabel('Анимация', { exact: true }).uncheck(); await page.getByLabel('Поза', { exact: true }).selectOption('sleep');
   await page.getByLabel('Тема', { exact: true }).selectOption('dark'); await page.getByLabel('Ширина 320px', { exact: true }).check();

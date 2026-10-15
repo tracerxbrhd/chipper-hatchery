@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .tgcloud/
+release-plan/
 .env
 .env.*
 !.env.example

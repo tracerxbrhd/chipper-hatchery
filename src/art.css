@@ -40,3 +40,19 @@
 @media (prefers-reduced-motion:reduce) { .chick-art *, .egg-art * { animation:none !important; transition:none !important; } }
 
 .chick-art:is(.chick-art--held,.chick-art--stroke,.chick-art--tap,.chick-art--land) .chick-v2-breath{animation:none}
+
+/* V3 uses the same saved V2 anatomy contract with an articulated DOM rig. */
+.chick-art--v3 .chick-v2-wing,.chick-art--v3 .chick-v2-wing--far,.chick-art--v3 .chick-v2-tail{transform-box:view-box}
+.chick-art--v3[data-controlled=true] [data-rig=head],
+.chick-art--v3[data-controlled=true] [data-rig=wing],
+.chick-art--v3[data-controlled=true] [data-rig=far-wing],
+.chick-art--v3[data-controlled=true] [data-rig=tail]{transition:transform 36ms linear}
+.chick-art--v3:is(.chick-art--sneeze,.chick-art--shake,.chick-art--startle) .chick-v2-breath{animation:none}
+.chick-art--v3:not([data-controlled]) .chick-v2-crest{animation:chipper-v3-crest 5.7s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.chick-art--v3:not([data-controlled]).chick-art--hatch .chick-v2-character{animation:chipper-v3-hatch 1.15s cubic-bezier(.2,.75,.3,1) both}
+.chick-art--v3:not([data-controlled]).chick-art--hatch .chick-v2-shell{transform-origin:160px 282px;animation:chipper-v3-shell 1.1s ease-out both}
+.chick-art--v3:not([data-controlled]).chick-art--grow .chick-v2-character{animation:chipper-v3-grow 1.2s cubic-bezier(.2,.75,.3,1) both}
+@keyframes chipper-v3-crest{0%,60%,100%{rotate:0deg}65%{rotate:-3deg}71%{rotate:4deg}77%{rotate:-1deg}}
+@keyframes chipper-v3-hatch{0%{opacity:0;transform:translateY(13px) scale(.77,.65)}18%{opacity:1;transform:translateY(9px) scale(.91,.75) rotate(-3deg)}34%{transform:translateY(4px) scale(.85,1.08) rotate(2deg)}57%{transform:translateY(-8px) scale(.97,1.05)}76%{transform:scale(1.04,.95)}100%{opacity:1;transform:scale(1)}}
+@keyframes chipper-v3-shell{0%,30%{transform:rotate(-2deg)}42%{transform:rotate(3deg) translateY(2px)}60%{transform:rotate(-2deg)}100%{transform:rotate(0)}}
+@keyframes chipper-v3-grow{0%{opacity:.7;transform:scale(.94,1.02)}28%{transform:scale(1.05,.92)}58%{opacity:1;transform:scale(.97,1.04)}82%{transform:scale(1.015,.99)}100%{opacity:1;transform:scale(1)}}

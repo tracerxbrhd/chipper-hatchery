@@ -13,11 +13,11 @@ export interface ChickGeometry {
 export const GROUND_CONTACT: Point = { x: 160, y: 282 };
 export const VIEWBOX = { width: 320, height: 320 } as const;
 const STAGES = {
-  baby: { bodyWidth: 108, bodyHeight: 96, headWidth: 94, headHeight: 86, neck: .52, leg: .76 },
-  teen: { bodyWidth: 127, bodyHeight: 108, headWidth: 84, headHeight: 82, neck: .65, leg: .91 },
-  adult: { bodyWidth: 144, bodyHeight: 118, headWidth: 76, headHeight: 77, neck: .76, leg: 1.04 },
+  baby: { bodyWidth: 105, bodyHeight: 87, headWidth: 116, headHeight: 101, neck: .56, leg: .7 },
+  teen: { bodyWidth: 118, bodyHeight: 111, headWidth: 101, headHeight: 96, neck: .58, leg: 1.07 },
+  adult: { bodyWidth: 149, bodyHeight: 116, headWidth: 98, headHeight: 90, neck: .68, leg: .98 },
 } as const;
-const HEAD_PROPORTIONS = { round: [1, 1], oval: [.88, 1.13], puffed: [1.12, 1.04], tall: [.79, 1.25], wide: [1.2, .82] } as const;
+const HEAD_PROPORTIONS = { round: [1, 1], oval: [.86, 1.08], puffed: [1.09, 1.02], tall: [.82, 1.19], wide: [1.16, .85] } as const;
 const BODY_PROPORTIONS = { pear: [1, 1], compact: [.9, .8], oval: [1.11, .82], stocky: [1.1, 1.05] } as const;
 const LEG_LENGTH = { stubby: 21, slender: 41, sturdy: 28 } as const;
 const LEG_WIDTH = { stubby: 4.1, slender: 3.4, sturdy: 6.3 } as const;
@@ -33,17 +33,17 @@ function pathFrom(normalized: string, center: Point, width: number, height: numb
 }
 
 const HEAD_PATHS = {
-  round: 'M0 -1C.58 -1 1 -.57 1 0C1 .59 .59 1 0 1C-.58 1 -1 .6 -1 0C-1 -.57 -.58 -1 0 -1Z',
-  oval: 'M.06 -1C.7 -.97 1 -.49 .99 .07C.98 .68 .49 1 -.06 1C-.71 .96 -1 .46 -.99 -.07C-.97 -.7 -.47 -1 .06 -1Z',
-  puffed: 'M0 -.98C.22 -1.04 .48 -.9 .58 -.8C.9 -.84 1.05 -.51 .97 -.26C1.08 -.03 1.03 .3 .89 .47C.88 .79 .56 .95 .29 .93C.03 1.07 -.3 1.03 -.45 .91C-.76 .92 -1 .63 -.96 .36C-1.08 .08 -1 -.25 -.9 -.4C-.88 -.72 -.56 -.89 -.32 -.89C-.21 -1.01 -.11 -1 0 -.98Z',
-  tall: 'M0 -1C.55 -1 .83 -.62 .89 -.12C1.08 .28 .93 .78 .43 .94C-.12 1.12 -.69 .9 -.84 .48C-1.05 .04 -.95 -.52 -.67 -.81C-.49 -.98 -.23 -1 0 -1Z',
-  wide: 'M-.05 -.98C.51 -1 1.02 -.64 1.01 -.09C1.05 .4 .68 .86 .23 .94C-.32 1.09 -.85 .88 -.98 .37C-1.12 -.12 -.89 -.68 -.45 -.87C-.31 -.98 -.16 -.99 -.05 -.98Z',
+  round: 'M-.18 -.99C.18 -1.13 .7 -.94 .82 -.65C.92 -.47 .8 -.38 .94 -.15C1.17 .16 .97 .63 .63 .72C.53 1.04 .12 .99 -.15 .92C-.49 1.04 -.94 .81 -.95 .44C-1.19 .19 -1.03 -.18 -.87 -.42C-.93 -.75 -.57 -1.01 -.18 -.99Z',
+  oval: 'M-.24 -.98C.18 -1.12 .64 -.91 .69 -.54C.71 -.31 1.03 -.18 .98 .18C1.1 .52 .82 .82 .49 .82C.3 1.07 -.19 1.04 -.38 .84C-.73 .95 -1.02 .62 -.97 .31C-1.13 .08 -.97 -.28 -.77 -.45C-.83 -.78 -.54 -1 -.24 -.98Z',
+  puffed: 'M-.12 -.91C.05 -1.11 .36 -1.04 .46 -.84C.75 -.95 1.04 -.72 .93 -.47C1.18 -.4 1.15 -.06 .99 .09C1.16 .36 .94 .64 .7 .65C.75 .94 .4 1.09 .17 .92C-.02 1.12 -.37 1.06 -.45 .87C-.77 .99 -1.07 .73 -.95 .45C-1.2 .35 -1.17 .02 -.98 -.15C-1.12 -.44 -.85 -.73 -.62 -.65C-.69 -.97 -.3 -1.13 -.12 -.91Z',
+  tall: 'M-.21 -1C.09 -1.1 .53 -.96 .62 -.66C.76 -.43 .62 -.2 .84 -.03C1.08 .16 1.1 .56 .81 .72C.68 1.05 .24 1.09 -.04 .9C-.42 1.08 -.88 .85 -.91 .51C-1.12 .23 -.91 -.14 -.82 -.36C-.9 -.73 -.6 -.98 -.21 -1Z',
+  wide: 'M-.39 -.92C-.03 -1.13 .3 -.87 .53 -.91C.81 -.95 1.08 -.64 .96 -.38C1.17 -.1 1.02 .26 .85 .39C.92 .74 .57 .97 .26 .89C.05 1.1 -.3 .98 -.47 .83C-.85 .9 -1.1 .62 -.98 .32C-1.17 .08 -1.04 -.3 -.88 -.45C-.93 -.77 -.66 -.97 -.39 -.92Z',
 } as const;
 const BODY_PATHS = {
-  pear: 'M.12 -1C.6 -1 .75 -.59 .85 -.23C1.11 .22 .93 .78 .4 .95C-.12 1.14 -.78 .93 -.94 .46C-1.13 -.03 -.83 -.42 -.65 -.63C-.49 -.83 -.24 -1 .12 -1Z',
-  compact: 'M-.17 -.94C.48 -1.08 .96 -.7 1 -.18C1.15 .35 .69 .92 .14 1C-.46 1.07 -.98 .64 -1 .08C-1.07 -.47 -.75 -.85 -.17 -.94Z',
-  oval: 'M0 -1C.56 -1 1 -.56 1 0C1 .54 .55 1 0 1C-.55 1 -1 .54 -1 0C-1 -.56 -.56 -1 0 -1Z',
-  stocky: 'M-.48 -.9C-.03 -1.08 .54 -1.02 .78 -.65C1.02 -.36 1.07 .35 .81 .7C.54 1.07 -.2 1.12 -.61 .87C-1 .65 -1.12 .09 -.94 -.38C-.83 -.69 -.66 -.83 -.48 -.9Z',
+  pear: 'M.03 -1C.51 -1.04 .69 -.63 .79 -.35C1.03 -.2 .88 -.06 1 .12C1.12 .49 .79 .87 .43 .91C.26 1.06 -.07 .99 -.16 .96C-.56 1.1 -.95 .87 -.96 .51C-1.13 .28 -1.04 -.1 -.83 -.24C-.96 -.39 -.74 -.54 -.64 -.58C-.53 -.88 -.23 -1.03 .03 -1Z',
+  compact: 'M-.28 -.92C.14 -1.14 .65 -.92 .75 -.62C.97 -.56 1.09 -.22 .95 -.02C1.1 .21 .98 .59 .74 .7C.5 .99 .2 .92 -.01 .99C-.31 1.08 -.62 .91 -.72 .78C-1.05 .7 -1.12 .3 -.97 .12C-1.1 -.13 -.89 -.5 -.73 -.55C-.73 -.83 -.49 -.97 -.28 -.92Z',
+  oval: 'M-.13 -.98C.31 -1.12 .83 -.89 .92 -.57C1.1 -.37 1.04 -.07 .97 .07C1.12 .39 .88 .71 .57 .8C.27 1.08 -.19 .99 -.38 .89C-.78 .94 -1.08 .64 -1 .32C-1.15 .05 -.95 -.33 -.78 -.48C-.76 -.8 -.43 -1.02 -.13 -.98Z',
+  stocky: 'M-.56 -.87C-.33 -1.08 .15 -.98 .34 -.96C.7 -1.08 .96 -.73 .91 -.46C1.12 -.23 1.01 .08 .98 .29C1.06 .63 .75 .92 .44 .89C.17 1.07 -.17 1.04 -.35 .93C-.7 1.01 -.98 .72 -.94 .46C-1.14 .23 -1.08 -.13 -.91 -.3C-.99 -.56 -.8 -.86 -.56 -.87Z',
 } as const;
 
 export function buildGeometry(genes: ChickGenesV2, stage: Stage, facingBlend = 0): ChickGeometry {
@@ -63,8 +63,9 @@ export function buildGeometry(genes: ChickGenesV2, stage: Stage, facingBlend = 0
   const rootY = GROUND_CONTACT.y - legLength;
   const anchors: ChickGeometry['anchors'] = {
     neck, headCenter,
-    eyeLeft: { x: headCenter.x + headWidth * .07, y: headCenter.y - headHeight * .075 },
-    eyeRight: { x: headCenter.x + headWidth * .33, y: headCenter.y - headHeight * .055 },
+    eyeLeft: { x: headCenter.x + headWidth * .005, y: headCenter.y - headHeight * .08 },
+    // The far socket remains inside the narrow tall head's upper cheek, including AA stroke margin.
+    eyeRight: { x: headCenter.x + headWidth * .26, y: headCenter.y - headHeight * .035 },
     beakRoot: { x: headCenter.x + headWidth * .455, y: headCenter.y + headHeight * .15 },
     crestRoot: { x: headCenter.x - headWidth * .06, y: headCenter.y - headHeight * .455 },
     wingRootLeft: { x: bodyCenter.x - bodyWidth * (.1 + facing * .2), y: bodyCenter.y - bodyHeight * .24 },
@@ -80,7 +81,7 @@ export function buildGeometry(genes: ChickGenesV2, stage: Stage, facingBlend = 0
   return {
     body: { path: pathFrom(BODY_PATHS[genes.bodyShape], bodyCenter, bodyWidth, bodyHeight), center: bodyCenter, width: bodyWidth, height: bodyHeight },
     head: { path: pathFrom(HEAD_PATHS[genes.headShape], headCenter, headWidth, headHeight), center: headCenter, width: headWidth, height: headHeight },
-    neckPath, anchors, legLength, eyeRadius: headWidth * (genes.eyeStyle === 'small' ? .098 : genes.eyeStyle === 'big' ? .155 : .135),
+    neckPath, anchors, legLength, eyeRadius: headWidth * (genes.eyeStyle === 'small' ? .123 : genes.eyeStyle === 'big' ? .18 : .158),
     legWidth: LEG_WIDTH[genes.legShape] * (stage === 'baby' ? .82 : 1),
   };
 }

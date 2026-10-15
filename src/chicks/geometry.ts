@@ -64,7 +64,8 @@ export function buildGeometry(genes: ChickGenesV2, stage: Stage, facingBlend = 0
   const anchors: ChickGeometry['anchors'] = {
     neck, headCenter,
     eyeLeft: { x: headCenter.x + headWidth * .005, y: headCenter.y - headHeight * .08 },
-    eyeRight: { x: headCenter.x + headWidth * .29, y: headCenter.y - headHeight * .035 },
+    // The far socket remains inside the narrow tall head's upper cheek, including AA stroke margin.
+    eyeRight: { x: headCenter.x + headWidth * .26, y: headCenter.y - headHeight * .035 },
     beakRoot: { x: headCenter.x + headWidth * .455, y: headCenter.y + headHeight * .15 },
     crestRoot: { x: headCenter.x - headWidth * .06, y: headCenter.y - headHeight * .455 },
     wingRootLeft: { x: bodyCenter.x - bodyWidth * (.1 + facing * .2), y: bodyCenter.y - bodyHeight * .24 },

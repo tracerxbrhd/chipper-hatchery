@@ -62,6 +62,7 @@ export interface ChickRigUpdate {
 export interface ChickArtHandle { update: (frame: ChickRigUpdate) => void }
 const n = (value: number) => Number(value.toFixed(3));
 const move = (point: Point) => `translate(${n(point.x)} ${n(point.y)})`;
+const boundedAxis = (value: number | undefined) => Number.isFinite(value) ? Math.max(-1, Math.min(1, value!)) : 0;
 
 /** The save/geometry contract stays V2. Only a small fixed rig is updated in place. */
 
@@ -96,8 +97,8 @@ export const ChickArt = memo(forwardRef<ChickArtHandle, ChickArtProps>(function 
     const f = poseFrame(geometry, c.selectedPose, phase, c.reaction);
     const reverse = c.selectedPose === 'turn' && c.direction !== 'front'
       ? c.direction === 'left' ? phase >= .5 : phase < .5 : c.direction === 'left';
-    const gazeX = (next.gaze?.x ?? 0) * (reverse ? -1 : 1), gazeY = next.gaze?.y ?? 0;
-    const motion = Math.max(-1, Math.min(1, next.motion ?? 0));
+    const gazeX = boundedAxis(next.gaze?.x) * (reverse ? -1 : 1), gazeY = boundedAxis(next.gaze?.y);
+    const motion = boundedAxis(next.motion);
     if (c.selectedPose === 'held') {
       f.headAngle -= motion * 7; f.wingAngle -= Math.abs(motion) * 14; f.tailAngle -= motion * 14;
     }

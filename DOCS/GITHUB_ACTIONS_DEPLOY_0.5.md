@@ -13,7 +13,7 @@ Workflow: [Chipper manual release](../.github/workflows/release.yml). Он за�
 ## Первый запуск: только диагностика
 
 1. Открой repository Actions → Chipper manual release → Run workflow. Branch: main.
-2. Mode: preflight. source_sha можно оставить пустым: workflow зафиксирует текущий полный SHA main. Остальные поля пустые.
+2. Mode: preflight. Если PR0.5 уже в main, source_sha можно оставить пустым: workflow зафиксирует текущий полный SHA main. Если в main установлен только workflow, обязательно укажи полный проверенный SHA feature/chipper-v0.5, содержащий release helper. Старый main0.4 без helper не подходит и не будет опубликован. Остальные поля пустые.
 3. Дождись npm ci, полного check и test:ui. Токен отсутствует на этих шагах.
 4. Затем credential передаётся только release helper: fetch/status/diff, строгий read-only getMe/SELECT preflight и migrate --local --dry-run. Никаких gameplay endpoints, push или применённых миграций.
 5. В Summary и artifact chipper-release-plan-<SHA> открой plan.json и changes.patch. Зафиксируй sourceSha, cloudRevision и planSha256. Проверь фактический diff с текущим cloud, а не только зелёную галочку.

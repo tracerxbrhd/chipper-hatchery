@@ -2,12 +2,14 @@
 
 Target: @chipperhatcherybot, App ID8924974998. **Owner currently authorizes read-only diagnostics only. No production write has been performed.** Feature PR must remain open/unmerged until reviewed.
 
+Для Android доступен подготовленный manual-only [GitHub Actions workflow](GITHUB_ACTIONS_DEPLOY_0.5.md): repository secret TGCLOUD_TOKEN, сначала preflight, затем отдельный подтверждённый deploy с точным source SHA/revision/plan digest. Workflow нужно сначала добавить в default branch решением владельца; агент не выполняет merge или dispatch production автоматически. Наличие workflow не означает, что live preflight уже прошёл.
+
 1. Pin reviewed feature SHA; verify latest main and source/tree hashes. Install Node24 dependencies with `npm ci`; require `npm run check` and `npm run test:ui`. Inspect0.5 screenshots and manual checks in ACCEPTANCE_RESULT_0.5.md. CI Chromium is not physical WebView evidence.
 2. In an already owner-authorized CLI environment, select the exact bot. Do not print/read/copy CLI token into console, Git, PR or reports. Verify getMe identity through documented CLI read-only facilities. If identity differs, stop.
 3. `npx tgcloud fetch`, `npx tgcloud --no-pager status`, `npx tgcloud --no-pager diff`; inspect differences against reviewed SHA. Fetch must not overwrite worktree. Never use automatic pull. If cloud revision/source differs unexpectedly, stop release and document actual revision; do not overwrite it.
 4. Run `node scripts/preflight-v0.4.mjs --require-tower-schema`: documented read-only SELECT/getMe preflight, preserving release fence `chipper-v0.2-clean-start`, two-row MATERIALIZED SQL support and TD settlement invariants. **Do not invoke gameplay endpoints as read-only probes:** getHome/listGifts may reconcile/expire/persist. Run only `npx tgcloud migrate --local --dry-run`; schema.js and tgcloud.jsonc are unchanged from main, so no schema change is expected. Unexpected DDL means stop. Do not apply migrations.
 5. Review actual immutable source/build diff and backup/recovery posture. Ask owner for separate explicit deployment authorization only after evidence is concrete. Until that authorization, do not push cloud, apply migrate, reset, force, repair webhook, delete data or call mutating endpoints.
-6. After separate authorization in a future session, publish only the reviewed build/source with normal documented CLI command. Confirm physical Telegram owner flows before wider beta. This document does not authorize that step.
+6. After separate explicit owner authorization, publish only the reviewed build/source with normal documented CLI command, or the reviewed manual Actions deploy. Approval may be given in the current session; this document does not authorize publication by itself. Confirm physical Telegram owner flows before wider beta.
 
 After any exchange or achievement claim,0.4 backend is unsafe as naive rollback: it does not enforce exchange reservations/namespaces/claim fences. Prefer tested fix-forward. Preserve all exchange history/receipts and achievement claimed IDs; never downgrade unknown entitlement versions, compact old receipts without proof or reset users.
 

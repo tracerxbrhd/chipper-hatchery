@@ -41,4 +41,6 @@ Production target8924974998/@chipperhatcherybot, исторический URL ht
 
 Ветка feature/chipper-v0.5 → один PR в main, без merge. [Deployment runbook](DOCS/DEPLOYMENT_0.5.md) содержит стоп-условия и физическую Telegram-приёмку. CI Chromium не заменяет Android/iOS WebView.
 
+С телефона можно использовать подготовленный [ручной GitHub Actions release](DOCS/GITHUB_ACTIONS_DEPLOY_0.5.md): repository secret TGCLOUD_TOKEN, отдельные preflight и deploy с reviewed SHA/revision/plan digest. Push/PR не публикуют приложение автоматически; workflow должен сначала попасть в main решением владельца.
+
 [GDD](DOCS/GDD_0.5.md) · [Визуальный стиль](DOCS/VISUAL_DESIGN_0.5.md) · [Анимации](DOCS/ANIMATION_0.5.md) · [Контракт](DOCS/CONTRACT_0.5.md) · [Реализация](DOCS/IMPLEMENTATION_0.5.md) · [Приёмка](DOCS/ACCEPTANCE_0.5.md).

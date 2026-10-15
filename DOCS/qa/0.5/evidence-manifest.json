@@ -1,0 +1,211 @@
+{
+  "sourceCommit": "c3b07c8c8a4ce4ded3361d86c982fa9d7c560b92",
+  "baseCommit": "3764261bd7ab2531b87b47c240a3158022b02754",
+  "workflowRun": 38695995822,
+  "qaArtifact": 11954415464,
+  "reportArtifact": 11954525382,
+  "chromium": "156.0.8078.4",
+  "capture": "Real Chromium, synthetic Telegram Android host, local SQLite production services; not physical Android/iOS or signed live",
+  "files": [
+    {
+      "path": "home-one-native-light-430.png",
+      "bytes": 207444,
+      "sha256": "cb58e1f428b32845edbc2f762a56146f2441f659b210b2757724a5bfdc83ef6a"
+    },
+    {
+      "path": "home-one-native-light-390.png",
+      "bytes": 190926,
+      "sha256": "2007aeab53d20284cf442ac3450bd3c2a9af9fa87a008cfdbe579c81d196e48d"
+    },
+    {
+      "path": "home-one-native-light-360.png",
+      "bytes": 145826,
+      "sha256": "ce82c9c57c62c7756e707b528012421b7b11bf39872b08cf8b3ad2b6394d0dbb"
+    },
+    {
+      "path": "home-one-native-light-320.png",
+      "bytes": 120907,
+      "sha256": "797e1f07ec8e8d2faf50b8aedc5c254a83056ed030ce708ea7b190505c11c7f6"
+    },
+    {
+      "path": "home-one-native-dark-430.png",
+      "bytes": 232237,
+      "sha256": "07cc54ea85060317d151c6d164f9d439d29d165663760a01bc732a34c8ce0b16"
+    },
+    {
+      "path": "home-one-native-dark-390.png",
+      "bytes": 206924,
+      "sha256": "2cceac58458a2d105e515533e4d8c91bd15a6d78ac3cc67082d6f9b43eea23f2"
+    },
+    {
+      "path": "home-one-native-dark-320.png",
+      "bytes": 134365,
+      "sha256": "aee2eacfc56a66b8d97a4ce200cb859798b0d0066be1829eee11ab4b3667778d"
+    },
+    {
+      "path": "home-one-native-dark-360.png",
+      "bytes": 158465,
+      "sha256": "a7d5f9bf8b7cc42430b913fa4621eadb150ba08a9578c33f6f732376c8467534"
+    },
+    {
+      "path": "visual-native-light-430.json",
+      "bytes": 3389,
+      "sha256": "4259bcffa966e5b5c19bede993a7136cbddc7dfa6cda7aeb76255d979bfd1960"
+    },
+    {
+      "path": "visual-native-light-390.json",
+      "bytes": 3374,
+      "sha256": "56d45fb0775a9a918876d41108eb1c2425991bcb7d06a77dc78aedf82db2b15b"
+    },
+    {
+      "path": "visual-native-light-360.json",
+      "bytes": 3383,
+      "sha256": "7b3cec11ce0abe16e9bad012e48faa622ac9d1f14773c2e9d75a36f6d513333d"
+    },
+    {
+      "path": "visual-native-light-320.json",
+      "bytes": 3335,
+      "sha256": "4f92830aba462abab1bcd2ea3be73cc75c54cc07a829f888bf6de67217cc8890"
+    },
+    {
+      "path": "visual-native-dark-390.json",
+      "bytes": 3321,
+      "sha256": "9c0a6f59cfea808e2aad277c7e0f3dc84a29e541ac108981d646c6734247a775"
+    },
+    {
+      "path": "visual-native-dark-430.json",
+      "bytes": 3378,
+      "sha256": "ba5c8fc3e8c4ee5a0c0776de4e35cf968982a6e466b1bba1452e85037ffd3df5"
+    },
+    {
+      "path": "visual-native-dark-360.json",
+      "bytes": 3367,
+      "sha256": "5e08a731b8d4878cc1b4e73b8125c9c4eaea2da9d232488b2711afe462edc6a1"
+    },
+    {
+      "path": "visual-native-dark-320.json",
+      "bytes": 3319,
+      "sha256": "0a695d2883352a89531e30c28ff37ae3cc1c00293e3d80571354d85b00df8faf"
+    },
+    {
+      "path": "browser-perf.json",
+      "bytes": 817,
+      "sha256": "71da48ea68f296b3949f52d24d35d4600200a55386c046702269cedcd8f3e0ce"
+    },
+    {
+      "path": "home-two-native-dark-390.png",
+      "bytes": 207096,
+      "sha256": "a2a57e6245c76385fb18c2153c33bd7593fdbf911509896d31d59395a5c346c2"
+    },
+    {
+      "path": "home-two-native-light-430.png",
+      "bytes": 205870,
+      "sha256": "ba0afbda30f88834e58f7ed058a87eee767b1390119b395d56bb91edce732ea1"
+    },
+    {
+      "path": "collection-native-dark-320.png",
+      "bytes": 115738,
+      "sha256": "af9d785b923b05a82faf9697fa1a8e8f9872b7b69d03a90d6766c6b446c6f5c2"
+    },
+    {
+      "path": "collection-native-light-390.png",
+      "bytes": 155027,
+      "sha256": "82bc1b92456bfb98f43f28895603d49f60488eb3657b0133bb74ebc25f3b3465"
+    },
+    {
+      "path": "comparison-native-dark-320.png",
+      "bytes": 102855,
+      "sha256": "072004de23f525f634ae94770f8eccd8f608866f3f83d3161ab2f1f950d1e6d2"
+    },
+    {
+      "path": "comparison-native-light-430.png",
+      "bytes": 157089,
+      "sha256": "3f84645f715f4fe44b7f4d3af8d9892f5d1f2b839a06b4b82a91d4ec868e3ce3"
+    },
+    {
+      "path": "profile-native-dark-390.png",
+      "bytes": 160760,
+      "sha256": "38e15b8829da8c6d6f44534e6260d00521e714bc16daf13dbf064dfd411ed1cb"
+    },
+    {
+      "path": "profile-native-light-390.png",
+      "bytes": 141624,
+      "sha256": "839cccfad9861c2af79c0a98c6a408974fcec91995b5d29e5e8f5b23c9cdb633"
+    },
+    {
+      "path": "activities-native-dark-390.png",
+      "bytes": 169141,
+      "sha256": "76720d8edc5fc31493771fddb324997f7aeb6f97838baa9d8345b81f12a584e3"
+    },
+    {
+      "path": "codex-native-dark-390.png",
+      "bytes": 166193,
+      "sha256": "145578e87003451164a3f537528159ab46b43b54bed59cc98a9da340230b5362"
+    },
+    {
+      "path": "incubator-native-light-390.png",
+      "bytes": 188248,
+      "sha256": "f064900ce81ae7e421588aa8d40654723ebd0765014cb01879c5b73c9415e8bf"
+    },
+    {
+      "path": "shop-native-light-390.png",
+      "bytes": 166409,
+      "sha256": "033cae36e35ae36e3de2bd6f01c727f6b33b8f1becc94a2641b2ebf19bf6baa8"
+    },
+    {
+      "path": "settings-native-dark-390.png",
+      "bytes": 158715,
+      "sha256": "eff6e930004986dbd597f0069f9db5cb53bba6edbf35fd20f304860455f2fd63"
+    },
+    {
+      "path": "social-native-light-390.png",
+      "bytes": 129916,
+      "sha256": "12315cae43c8bf24d0ed0bfd1b6ab9167ba6357b0930d6c9e51107a7a8a0d83a"
+    },
+    {
+      "path": "daily-native-dark-390.png",
+      "bytes": 178922,
+      "sha256": "942cf60cb9200ec6354cf795361e88e8bfc23de81d76581e5a4048cd8f8a4e3c"
+    },
+    {
+      "path": "flaps-ready-native-dark-390.png",
+      "bytes": 78771,
+      "sha256": "e36047b2bb7fa90f97edb39d256c7f21e9418c332ad05dedbf501dbaac27254b"
+    },
+    {
+      "path": "flaps-ready-native-light-390.png",
+      "bytes": 67229,
+      "sha256": "05817177373d270dcfbc55395a7a062cfbc96d5763e57bd4cf76cf0eb8d12464"
+    },
+    {
+      "path": "tower-build-native-light-390.png",
+      "bytes": 83813,
+      "sha256": "0fd13d2d5a381db2ee996fbdd5201702cc5a22cb12614ae7c02a21f73627df8a"
+    },
+    {
+      "path": "tower-build-native-dark-390.png",
+      "bytes": 95105,
+      "sha256": "effadba0e63a1072dc90ffe20b633d86e2ab3cad38fa164eb78dc8144c8ba8dd"
+    },
+    {
+      "path": "glass-fallback-native-dark-320.png",
+      "bytes": 128268,
+      "sha256": "350c8a96d920c9eec098917027b6c21f952bd6c9f60e91f78690b70bbe1d51c6"
+    },
+    {
+      "path": "reduced-motion-low-memory-native-dark-320.png",
+      "bytes": 105620,
+      "sha256": "88ffc66a35485108d7d14ef2e75e8771e027feb55c9805050d4e8da6c0f2517b"
+    },
+    {
+      "path": "exchange-pair-confirm-dark-320.png",
+      "bytes": 54535,
+      "sha256": "8f4d9faa9674820f785e9ddb2c2fb0d97f4949067782c508749fea821f8c00fc"
+    },
+    {
+      "path": "exchange-accepted-light-390.png",
+      "bytes": 128175,
+      "sha256": "637cc5c67d91d46df7eab77aec125dd46eb63ea683c879df6db4359c0df73cd4"
+    }
+  ]
+}

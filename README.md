@@ -31,7 +31,7 @@ node --loader ./scripts/lib/ts-extension-loader.mjs scripts/qa-v05-world.mjs
 node scripts/qa-v05-adapter.mjs
 ```
 
-Фактический статус: [ACCEPTANCE_RESULT_0.5.md](DOCS/ACCEPTANCE_RESULT_0.5.md). Пока полный CI/визуальные gates не подтверждены, релиз не считается beta-ready. Локальная среда блокирует npm/network/browser; этот результат не подменяется PASS. Native SQLite/rig/контраст proofs дополняют полные suites.
+Фактический статус: [ACCEPTANCE_RESULT_0.5.md](DOCS/ACCEPTANCE_RESULT_0.5.md). Полный GitHub Actions CI прошёл: npm ci, npm run check (543 теста) и npm run test:ui (103 теста). [Галерея и реальные before/after](DOCS/qa/0.5/README.md) включают восемь light/dark viewport-вариантов и замеры. Это кандидат для бета-тестирования; физическая Android/iOS Telegram-приёмка и авторизованный production preflight остаются владельцу. Production не изменён.
 
 ## Сохранения и выпуск
 

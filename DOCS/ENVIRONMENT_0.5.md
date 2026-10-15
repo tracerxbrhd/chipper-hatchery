@@ -81,3 +81,18 @@ CHIPPER_CHROMIUM_PATH=/usr/bin/chromium npm run test:ui
 Use the lockfile's Playwright version and its supported browser where available.
 Restoring supported sidecar connectivity and browser process permissions is an
 environment prerequisite, not a reason to modify production or reset player data.
+
+## Successful full execution through repository GitHub Actions
+
+The local restrictions above remain true and were not bypassed. Existing GitHub
+Actions supplied the supported Node24/npm/Playwright environment. Runtime commit
+c3b07c8c8a4ce4ded3361d86c982fa9d7c560b92 completed
+[run38695995822](https://github.com/tracerxbrhd/chipper-hatchery/actions/runs/38695995822):
+actual npm ci (0 vulnerabilities), full npm run check (47 files/543 tests), and
+npm run test:ui (103/103). Chromium156.0.8078.4 generated the committed screenshots,
+computed-style metadata and performance sample. The full artifacts and provenance
+are indexed in [qa/0.5/README.md](qa/0.5/README.md).
+
+Thus browser rendering and responsive emulation are now verified remotely.
+Physical Android/iOS Telegram, signed live accounts and cloud identity/revision
+remain unverified; no production endpoint was called to obtain this evidence.

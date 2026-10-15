@@ -1,0 +1,32 @@
+{
+  "evidence": "Headless Chromium with synthetic Telegram Android host and real local SQLite production services; not physical-device FPS or signed live acceptance",
+  "chromium": "156.0.8078.4",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "pair": {
+    "sampleMs": 2500,
+    "initialNodes": 305,
+    "finalNodes": 311,
+    "frames": 149,
+    "frameIntervalP95Ms": 16.799999999999727,
+    "longTaskCount": 0,
+    "maxLongTaskMs": 0,
+    "heapBytes": 10000000,
+    "hiddenSampleMs": 350,
+    "hiddenRafScheduled": 0
+  },
+  "tower": {
+    "sampleMs": 2500,
+    "initialNodes": 57,
+    "finalNodes": 57,
+    "frames": 150,
+    "frameIntervalP95Ms": 16.700000000000728,
+    "longTaskCount": 0,
+    "maxLongTaskMs": 0,
+    "heapBytes": 10000000,
+    "hiddenSampleMs": 350,
+    "hiddenRafScheduled": 0
+  }
+}

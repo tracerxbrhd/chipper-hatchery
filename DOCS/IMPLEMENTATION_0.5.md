@@ -11,3 +11,5 @@ Exchange offer reserves proposer bird only. Acceptance rechecks both full origin
 Shop is explicitly deferred to saved0.6 marketplace/decor roadmap, with honest unavailable checkout; no fake economic implementation. Ambient events are decorative only. Full source ownership and API: CONTRACT_0.5.md. Visual and animation matrices: VISUAL_DESIGN_0.5.md / ANIMATION_0.5.md.
 
 Validation is recorded in ACCEPTANCE_RESULT_0.5.md. Local npm/browser sandbox failures are ENVIRONMENT_0.5.md; repository GitHub Actions is the full-check execution path. Never infer physical Telegram acceptance from CI Chromium.
+
+Final runtime c3b07c8: actual npm ci, full check (47 files/543 tests), all103 Playwright tests PASS in run38695995822. Committed screenshot subset, eight geometry/style JSON records, actual browser performance sample and SHA256 provenance are indexed in qa/0.5/README.md. Final report-only commit changes no runtime source. Physical Telegram/live cloud gates remain with the owner; no cloud deployment or merge occurred.
